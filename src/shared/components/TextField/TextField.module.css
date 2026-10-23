@@ -1,0 +1,21 @@
+.field { display: flex; flex-direction: column; gap: calc(var(--u) * 0.5); }
+.label { font-size: clamp(12px, 1.8vh, 14px); font-weight: 600; }
+.control { position: relative; display: flex; align-items: center; }
+.icon, .right { position: absolute; top: 0; bottom: 0; display: grid; place-items: center; color: #4a5565; }
+.icon { left: 14px; pointer-events: none; }
+.right { right: 12px; }
+.input {
+  width: 100%;
+  height: clamp(38px, 5.4vh, 48px);
+  padding: 0 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #f7f8fa;
+  color: var(--text);
+  font-size: clamp(13px, 1.9vh, 15px);
+  outline: none;
+}
+.input::placeholder { color: #8b95a3; }
+.input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255, 106, 0, 0.15); background: #fff; }
+.invalid { border-color: var(--danger); }
+.error { margin: 0; font-size: 12px; color: var(--danger); }

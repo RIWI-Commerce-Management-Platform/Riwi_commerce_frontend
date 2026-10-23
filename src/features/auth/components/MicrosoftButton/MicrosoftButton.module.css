@@ -1,0 +1,12 @@
+.button {
+  width: 100%; display: flex; align-items: center; gap: 18px;
+  padding: clamp(8px, 1.8vh, 14px) 18px clamp(8px, 1.8vh, 14px) clamp(16px, 3vw, 44px);
+  border: 1.5px solid var(--orange); border-radius: var(--radius-sm);
+  background: #fff; color: inherit; text-align: left; cursor: pointer;
+  transition: background 0.15s;
+}
+.button:hover { background: #fff6ee; }
+.button:focus-visible { outline: 3px solid rgba(255, 106, 0, 0.35); outline-offset: 2px; }
+.logo { flex: none; width: clamp(26px, 4.4vh, 38px); height: clamp(26px, 4.4vh, 38px); }
+.title { display: block; font-size: clamp(15px, 2.2vh, 19px); font-weight: 700; color: var(--navy); }
+.subtitle { display: block; margin-top: 3px; font-size: clamp(11px, 1.7vh, 14px); }

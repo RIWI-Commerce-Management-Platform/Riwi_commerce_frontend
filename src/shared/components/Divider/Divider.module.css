@@ -1,0 +1,5 @@
+.divider {
+  display: flex; align-items: center; gap: 14px;
+  margin: 0; font-size: clamp(12px, 1.8vh, 14px);
+}
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }

@@ -1,0 +1,19 @@
+:root {
+  --navy: #0b2545;
+  --orange: #ff6a00;
+  --orange-600: #e85f00;
+  --text: #12284a;
+  --muted: #6b7686;
+  --border: #d9dee6;
+  --peach: #ffe9d9;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --danger: #d92d20;
+
+  --radius-sm: 6px;
+  --radius-lg: 24px;
+  --font: "Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif;
+
+  /* unidad vertical: el layout se comprime con la altura de la pantalla */
+  --u: clamp(6px, 1.5vh, 16px);
+}

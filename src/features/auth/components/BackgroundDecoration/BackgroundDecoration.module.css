@@ -1,0 +1,4 @@
+.wrap { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.dots { position: absolute; top: 8px; right: 0; }
+.lines { position: absolute; bottom: 0; right: 0; }
+@media (max-width: 960px) { .dots, .lines { opacity: 0.5; } }

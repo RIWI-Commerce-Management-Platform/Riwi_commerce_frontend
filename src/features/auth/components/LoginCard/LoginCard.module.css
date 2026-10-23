@@ -1,0 +1,21 @@
+.card {
+  position: relative;
+  width: 100%; max-width: 470px; margin: auto;
+  display: flex; flex-direction: column; gap: calc(var(--u) * 1.1);
+  padding: clamp(14px, 2.8vh, 30px) clamp(18px, 2.6vw, 40px) clamp(14px, 3vh, 32px);
+  background: var(--surface); border-radius: var(--radius-lg);
+  box-shadow: 0 10px 40px rgba(16, 40, 80, 0.08);
+}
+.header { display: flex; flex-direction: column; align-items: center; text-align: center; gap: calc(var(--u) * 0.6); }
+.badge {
+  width: clamp(34px, 5.2vh, 48px); height: clamp(34px, 5.2vh, 48px);
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--peach); color: var(--orange);
+}
+.title { margin: 0; font-size: clamp(22px, 3.5vh, 30px); font-weight: 800; color: var(--navy); }
+.subtitle { margin: 0; max-width: 280px; font-size: clamp(12px, 1.7vh, 15px); line-height: 1.5; }
+.help { display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap; font-size: clamp(12px, 1.7vh, 13px); }
+.link { color: var(--orange); font-weight: 600; text-decoration: none; }
+.link:hover { text-decoration: underline; }
+
+@media (max-height: 640px) { .subtitle { display: none; } }

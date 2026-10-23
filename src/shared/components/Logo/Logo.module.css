@@ -1,0 +1,9 @@
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-size: clamp(28px, 5.4vh, 46px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
