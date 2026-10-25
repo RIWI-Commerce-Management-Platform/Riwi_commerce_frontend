@@ -11,6 +11,7 @@ import {
   BarChart3,
   LogOut,
   ChevronRight,
+  X,
 } from "lucide-react";
 import Logo from "@/shared/components/Logo/Logo";
 import { useAuth, ROLES } from "@/features/auth";
@@ -78,7 +79,7 @@ function getRoleLabel(role, zoneId) {
     case ROLES.ADMIN:
       return "Administrador";
     case ROLES.DIRECTOR_REGIONAL:
-      return zoneId ? `Director Regional (Zona ${zoneId})` : "Director Regional";
+      return zoneId ? `Director Reg. (Zona ${zoneId})` : "Director Regional";
     case ROLES.ASESOR:
       return "Asesor Comercial";
     default:
@@ -95,69 +96,92 @@ function getInitials(name = "") {
   return name.slice(0, 2).toUpperCase();
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose = () => {} }) {
   const { user, role, zoneId, logout, hasRole } = useAuth();
 
   const accessibleItems = MENU_ITEMS.filter((item) => hasRole(item.roles));
 
   return (
-    <aside className={styles.sidebar}>
-      {/* Cabecera del Sidebar con Logo */}
-      <div className={styles.header}>
-        <div className={styles.logoWrapper}>
-          <Logo />
-        </div>
-      </div>
+    <>
+      {/* Backdrop oscuro para móvil cuando el menú está abierto */}
+      {isOpen && (
+        <div
+          className={styles.backdrop}
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Navegación con items filtrados por rol */}
-      <nav className={styles.nav}>
-        <div className={styles.sectionLabel}>Menú Principal</div>
-        <ul className={styles.navList}>
-          {accessibleItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <li key={item.to}>
-                <NavLink
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
-                  }
-                >
-                  <Icon className={styles.icon} size={20} />
-                  <span className={styles.navLabel}>{item.label}</span>
-                  <ChevronRight className={styles.arrow} size={14} />
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Tarjeta inferior con el usuario autenticado y botón de cierre de sesión */}
-      <div className={styles.footer}>
-        <div className={styles.userCard}>
-          <div className={styles.avatar}>
-            {getInitials(user?.name || user?.email)}
-          </div>
-          <div className={styles.userInfo}>
-            <span className={styles.userName} title={user?.name || user?.email}>
-              {user?.name || user?.email?.split("@")[0]}
-            </span>
-            <span className={styles.userRole}>
-              {getRoleLabel(role, zoneId)}
-            </span>
+      <aside
+        className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
+        aria-label="Barra lateral de navegación"
+      >
+        {/* Cabecera del Sidebar con Logo y botón cerrar en móvil */}
+        <div className={styles.header}>
+          <div className={styles.logoWrapper}>
+            <Logo />
           </div>
           <button
             type="button"
-            className={styles.logoutBtn}
-            onClick={logout}
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="Cerrar menú"
           >
-            <LogOut size={18} />
+            <X size={20} />
           </button>
         </div>
-      </div>
-    </aside>
+
+        {/* Navegación con items filtrados por rol */}
+        <nav className={styles.nav}>
+          <div className={styles.sectionLabel}>Menú Principal</div>
+          <ul className={styles.navList}>
+            {accessibleItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                    }
+                  >
+                    <Icon className={styles.icon} size={20} />
+                    <span className={styles.navLabel}>{item.label}</span>
+                    <ChevronRight className={styles.arrow} size={14} />
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Tarjeta inferior con el usuario autenticado y botón de cierre de sesión */}
+        <div className={styles.footer}>
+          <div className={styles.userCard}>
+            <div className={styles.avatar}>
+              {getInitials(user?.name || user?.email)}
+            </div>
+            <div className={styles.userInfo}>
+              <span className={styles.userName} title={user?.name || user?.email}>
+                {user?.name || user?.email?.split("@")[0]}
+              </span>
+              <span className={styles.userRole}>
+                {getRoleLabel(role, zoneId)}
+              </span>
+            </div>
+            <button
+              type="button"
+              className={styles.logoutBtn}
+              onClick={logout}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

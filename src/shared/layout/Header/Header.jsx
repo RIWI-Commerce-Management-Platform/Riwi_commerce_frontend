@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
-import { Shield, MapPin, Bell } from "lucide-react";
-import { useAuth, ROLES } from "@/features/auth";
+import { Shield, MapPin, Bell, Menu } from "lucide-react";
+import { useAuth } from "@/features/auth";
 import styles from "./Header.module.css";
 
 const TITLES = {
@@ -15,15 +15,24 @@ const TITLES = {
   "/reportes": "Centro de Reportes y Exportación",
 };
 
-export default function Header() {
+export default function Header({ onToggleMenu = () => {}, isMenuOpen = false }) {
   const location = useLocation();
-  const { user, role, zoneId } = useAuth();
+  const { role, zoneId } = useAuth();
 
   const title = TITLES[location.pathname] || "Comercial 360";
 
   return (
     <header className={styles.header}>
       <div className={styles.left}>
+        <button
+          type="button"
+          className={styles.menuToggle}
+          onClick={onToggleMenu}
+          aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú de navegación"}
+          title="Menú"
+        >
+          <Menu size={22} />
+        </button>
         <h2 className={styles.pageTitle}>{title}</h2>
       </div>
 

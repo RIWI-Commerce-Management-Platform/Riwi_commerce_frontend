@@ -1,3 +1,17 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 50;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .sidebar {
   width: 280px;
   min-width: 280px;
@@ -12,16 +26,36 @@
   top: 0;
   left: 0;
   z-index: 40;
+  transition: transform 0.25s ease;
 }
 
 .header {
   padding: 24px 20px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .logoWrapper {
   display: flex;
   align-items: center;
+}
+
+.closeBtn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .sectionLabel {
@@ -196,4 +230,25 @@
 .logoutBtn:hover {
   background: rgba(239, 68, 68, 0.18);
   color: #ef4444;
+}
+
+/* Modo Móvil / Drawer */
+@media (max-width: 960px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 60;
+    transform: translateX(-100%);
+    width: 280px;
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .closeBtn {
+    display: flex;
+  }
 }

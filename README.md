@@ -1,53 +1,89 @@
-# Comercial 360 – Frontend
+# Comercial 360 — Frontend
 
-React + Vite. Arquitectura **por features** con **CSS Modules**.
+Plataforma Web de Gestión Comercial construida con **React 18**, **Vite** y **CSS Modules**, siguiendo una arquitectura modular por características (**Feature-Driven Architecture**) y diseño responsivo para escritorio, tablets y dispositivos móviles.
 
-## Uso
-```bash
-npm install
-cp .env.example .env   # opcional: define VITE_API_URL
-npm run dev            # http://localhost:5173
-npm run build
-```
+---
 
-## Arquitectura
+## 📋 Requisitos Previos
+
+- **Node.js**: Versión 20 o superior.
+- **Backend Comercial 360**: Corriendo en `http://localhost:3015` (vía `docker compose up` o `npm run start:dev`).
+
+---
+
+## 🚀 Inicio Rápido e Instalación
+
+1. **Instalar dependencias:**
+   ```bash
+   npm install
+   ```
+
+2. **Configurar el archivo de entorno:**
+   Copia el archivo de ejemplo a `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+   *Nota: Por defecto, `.env` contiene `VITE_API_URL=/api`. Esto activa el proxy interno de Vite que redirige las peticiones hacia el backend en `http://localhost:3015` sin problemas de CORS ni cookies de sesión.*
+
+3. **Iniciar el servidor de desarrollo:**
+   ```powershell
+   npm run dev
+   ```
+   La aplicación abrirá automáticamente en `http://localhost:5173/login`.
+
+4. **Compilar para producción:**
+   ```bash
+   npm run build
+   ```
+
+5. **Ejecutar pruebas unitarias:**
+   ```bash
+   npm test
+   ```
+
+---
+
+## 🏛️ Estructura del Proyecto
+
 ```
 src/
-├── main.jsx                      # punto de entrada
-├── app/App.jsx                   # composición de la app (aquí irá el router)
-├── config/env.js                 # variables de entorno
-├── styles/                       # tokens (colores, tipografía) y estilos globales
-├── shared/components/            # UI reutilizable, sin lógica de negocio
-│   ├── Button  TextField  Checkbox  Divider  Logo  Footer
-│   └── icons/
+├── app/
+│   └── App.jsx                   # Router principal con BrowserRouter y AuthProvider
+├── config/
+│   └── env.js                    # Sanitización y exportación de VITE_API_URL
+├── styles/
+│   ├── tokens.css                # Variables de diseño (colores navy, orange, tipografía)
+│   └── global.css                # Reseteo y estilos base globales
+├── shared/
+│   ├── components/               # Componentes atómicos de UI (Button, TextField, Checkbox, etc.)
+│   ├── layout/                   # Layout responsive unificado (AppLayout, Sidebar con drawer móvil, Header)
+│   └── services/
+│       └── apiClient.js          # Cliente HTTP reutilizable con credentials: "include" y manejo de errores
 └── features/
-    └── auth/                     # todo lo de autenticación vive aquí
-        ├── pages/LoginPage       # layout de la pantalla
-        ├── components/           # BrandPanel, LoginCard, LoginForm, MicrosoftButton, BackgroundDecoration
-        ├── hooks/useLoginForm    # estado + validación del formulario
-        ├── services/authService  # llamadas a la API
-        └── index.js              # API pública del feature
+    ├── auth/                     # Módulo de Autenticación (HU-05, HU-08)
+    │   ├── context/AuthContext   # Estado global de sesión, roles (ADMIN, DIRECTOR_REGIONAL, ASESOR) y verificación de GET /auth/me
+    │   ├── pages/LoginPage       # Vista de login con diseño responsivo split-panel
+    │   ├── components/           # BrandPanel, LoginCard, LoginForm, MicrosoftButton
+    │   ├── hooks/useLoginForm    # Validación y llamada al login
+    │   └── services/authService  # Integración con POST /auth/login y GET /auth/me
+    └── dashboard/                # Módulo de Dashboard Comercial (HU-35)
+        ├── pages/DashboardPage   # Tarjetas de KPIs y filtros por semana/territorio
+        ├── components/           # DashboardFilters, KpiCard
+        └── services/             # Integración con GET /dashboard/kpis
 ```
 
-Reglas: `shared` no importa de `features`; cada feature expone solo lo que sale en su `index.js`;
-la lógica va en `hooks/` y las llamadas HTTP en `services/`. Para agregar un módulo
-(rutas, clientes, etc.) crea `features/<nombre>/` con la misma estructura.
+---
 
-Imports con alias `@` → `src/`.
+## 🔐 Autenticación y Control de Roles
 
+La aplicación utiliza **Better Auth** con cookies HttpOnly gestionadas automáticamente:
+- **`ADMIN`**: Acceso global al Dashboard, Asesores, Clientes, Rutas, Cotizaciones, Catálogos y Reportes.
+- **`DIRECTOR_REGIONAL`**: Acceso al Dashboard de su zona, Clientes, Planeación de Rutas (Wizard), Visitas de su territorio y Reportes.
+- **`ASESOR`**: Acceso operativo a su Agenda de Visitas diaria, Clientes asignados, Cotizaciones/Pedidos y Dashboard.
 
-## Dashboard de KPI (HU-35)
-`features/dashboard/` en `#/dashboard`: seis tarjetas (visitas programadas y realizadas, efectividad,
-valor cotizado, pedidos cerrados y facturación) filtradas por semana y territorio, desde
-`GET /dashboard/kpis` del backend. Requiere sesión de admin o director regional.
+---
 
-```bash
-# backend en http://localhost:3015; Vite reenvía /api a esa URL (API_PROXY_TARGET para cambiarla)
-VITE_API_URL=/api npm run dev   # abre http://localhost:5173/#/dashboard
-npm test
-```
+## 📱 Diseño Responsivo Móvil
 
-## Pendiente
-- Conectar `authService.login` con tu API (`VITE_API_URL`).
-- Integrar MSAL en `loginWithMicrosoft`.
-- Agregar React Router cuando existan más pantallas.
+- **Pantalla de Login:** En pantallas móviles (`<= 960px`), el panel ilustrativo lateral se oculta de forma fluida, centrando la tarjeta de acceso para que el usuario pueda ingresar de inmediato sin desplazamientos innecesarios.
+- **Sidebar & Layout:** En pantallas grandes se mantiene fija a la izquierda. En dispositivos móviles (`<= 960px`), se transforma en un **menú lateral desplegable (Drawer)** accesible desde el botón de hamburguesa en la cabecera.
