@@ -67,31 +67,45 @@ src/
     ├── dashboard/                # Módulo de Dashboard Comercial (HU-35)
     │   ├── pages/DashboardPage   # Tarjetas de KPIs y filtros por semana/territorio
     │   └── services/             # Integración con GET /dashboard/kpis
-    └── clients/                  # Directorio y Gestión de Clientes (HU-11, HU-12, HU-13)
-        ├── pages/ClientsPage     # Vista principal de clientes con búsqueda y filtros
+    ├── clients/                  # Directorio y Gestión de Clientes (HU-11, HU-12, HU-13)
+    │   ├── pages/ClientsPage     # Vista principal de clientes con búsqueda y filtros
+    │   ├── components/
+    │   │   ├── ClientsTable      # Tabla con paginación, estados y botón de mapa interactivo
+    │   │   ├── ClientFilters     # Barra de filtros (NIT, Zona, Tipo, Potencial, Estado)
+    │   │   ├── ClientFormModal   # Modal de creación/edición con soporte GPS manual y automático
+    │   │   ├── ClientContactsModal # Gestión de contactos y contacto principal (HU-13)
+    │   │   └── ClientMapModal    # Visualizador de mapa interactivo con Leaflet y OpenStreetMap
+    │   └── services/             # Integración con endpoints /clients y /catalogs
+    └── routes/                   # Planeación de Rutas Comerciales (Épica E3: HU-17 a HU-22)
+        ├── pages/RoutesPage      # Vista de supervisión de rutas y botón de nuevo asistente
         ├── components/
-        │   ├── ClientsTable      # Tabla con paginación, estados y botón de mapa interactivo
-        │   ├── ClientFilters     # Barra de filtros (NIT, Zona, Tipo, Potencial, Estado)
-        │   ├── ClientFormModal   # Modal de creación/edición con soporte GPS manual y automático
-        │   ├── ClientContactsModal # Gestión de contactos y contacto principal (HU-13)
-        │   └── ClientMapModal    # Visualizador de mapa interactivo con Leaflet y OpenStreetMap
-        └── services/             # Integración con endpoints /clients y /catalogs
+        │   ├── RoutesTable       # Tabla de rutas con estados (DRAFT, ASSIGNED), métricas y acciones
+        │   ├── RouteFilters      # Filtros por zona, estado, día de semana y frecuencia
+        │   ├── RouteWizard/      # Asistente guiado de 3 pasos (Wizard):
+        │   │   ├── Step1GeneralData   # Paso 1: Datos logísticos, territorio, fechas y horario
+        │   │   ├── Step2StopsAndMap   # Paso 2: Selección de paradas, reordenamiento, distancias Haversine y mapa con polilíneas
+        │   │   └── Step3AssignAdvisor # Paso 3: Asignación a asesor y programación automática de visitas
+        │   └── RouteDetailModal  # Vista de inspección con mapa interactivo y secuencia de visitas
+        ├── hooks/
+        │   ├── useRoutes         # Paginación, consulta y cambio de estado
+        │   └── useRouteWizard    # Máquina de estados del asistente y cálculo de métricas
+        └── services/             # Integración con endpoints REST /routes
 ```
 
 ---
 
-## 🗺️ Mapa Interactivo y Georreferenciación (Leaflet & OSM)
+## 🗺️ Planeación de Rutas con Mapa Interactivo (Wizard)
 
-- Al hacer clic en la pastilla **`Geolocalizado`** dentro del Directorio de Clientes, se abre el modal interactivo con el mapa centrado en las coordenadas exactas (`latitude`, `longitude`).
-- Incluye pin visual personalizado animado, ficha de datos del cliente, botón para copiar coordenadas al portapapeles y enlaces directos de navegación (*Cómo llegar con Google Maps* y *OpenStreetMap*).
-- Si el cliente no cuenta con coordenadas, el sistema permite editarlas manualmente en el formulario o geocodificarlas automáticamente a partir de la dirección física.
+- **Paso 1 (HU-17):** Creación del borrador con nombre, zona territorial, día de atención, frecuencia de repetición y horario de jornada comercial.
+- **Paso 2 (HU-18, HU-19, HU-22):** Selección de clientes de la zona, definición de horarios sugeridos de llegada y minutos de atención. Permite mover arriba/abajo las paradas. El sistema recalcula la **distancia total en km** (algoritmo geodésico Haversine con factor urbano 1.3x) y el **tiempo estimado** en minutos, renderizando en tiempo real el mapa con pines numerados (`1`, `2`, `3`...) y polilíneas conectadas.
+- **Paso 3 (HU-20):** Asignación al asesor comercial y confirmación final, lo que inserta automáticamente las visitas en estado `Pendiente` en la agenda operativa.
 
 ---
 
 ## 🔐 Autenticación y Control de Roles
 
 La aplicación utiliza **Better Auth** con cookies HttpOnly gestionadas automáticamente:
-- **`ADMIN`**: Acceso global al Dashboard, Asesores, Clientes, Rutas, Cotizaciones, Catálogos y Reportes.
+- **`ADMIN`**: Acceso global al Dashboard, Asesores, Clientes, Planeación de Rutas, Cotizaciones, Catálogos y Reportes.
 - **`DIRECTOR_REGIONAL`**: Acceso al Dashboard de su zona, Clientes, Planeación de Rutas (Wizard), Visitas de su territorio y Reportes.
 - **`ASESOR`**: Acceso operativo a su Agenda de Visitas diaria, Clientes asignados, Cotizaciones/Pedidos y Dashboard.
 
@@ -99,5 +113,5 @@ La aplicación utiliza **Better Auth** con cookies HttpOnly gestionadas automát
 
 ## 📱 Diseño Responsivo Móvil
 
-- **Pantalla de Login:** En pantallas móviles (`<= 960px`), el panel ilustrativo lateral se oculta de forma fluida, centrando la tarjeta de acceso para que el usuario pueda ingresar de inmediato sin desplazamientos innecesarios.
-- **Sidebar & Header:** En pantallas grandes se mantiene fija a la izquierda con animaciones de elevación táctil (*hover zoom*). En dispositivos móviles (`<= 960px`), se transforma en un **menú lateral desplegable (Drawer)** accesible desde el botón de hamburguesa en la cabecera.
+- **Pantalla de Login:** En pantallas móviles (`<= 960px`), el panel ilustrativo lateral se oculta de forma fluida, centrando la tarjeta de acceso.
+- **Sidebar & Layout:** En pantallas grandes se mantiene fija a la izquierda con animaciones táctiles (*hover zoom*). En dispositivos móviles (`<= 960px`), se transforma en un **menú lateral desplegable (Drawer)** accesible desde el botón de hamburguesa en la cabecera.
