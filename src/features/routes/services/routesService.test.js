@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe("routesService", () => {
-  it("consulta listado de rutas con filtros y paginación (HU-21)", async () => {
+  it("consulta listado de rutas con filtros y paginación", async () => {
     const mockData = {
       data: [{ id: 1, name: "Ruta Barranquilla Norte", status: "DRAFT" }],
       meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
@@ -36,7 +36,7 @@ describe("routesService", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("/api/routes?page=1&limit=10&search=Norte&zoneId=1&status=DRAFT");
   });
 
-  it("crea un borrador de ruta mediante POST /routes (HU-17)", async () => {
+  it("crea un borrador de ruta mediante POST /routes", async () => {
     const payload = {
       name: "Ruta Semanal Mayoristas",
       zoneId: 1,
@@ -58,7 +58,7 @@ describe("routesService", () => {
     );
   });
 
-  it("agrega una parada a la ruta y recalcula métricas (HU-18, HU-22)", async () => {
+  it("agrega una parada a la ruta y recalcula métricas", async () => {
     const stopData = { clientId: 5, suggestedTime: "09:00:00", estimatedDurationMinutes: 30 };
     const fetchMock = respond(201, { id: 10, stopsCount: 1, totalDistanceKm: 3.5 });
     vi.stubGlobal("fetch", fetchMock);
@@ -74,7 +74,7 @@ describe("routesService", () => {
     );
   });
 
-  it("reordena paradas de la ruta mediante PATCH /routes/:id/stops/reorder (HU-18, HU-19)", async () => {
+  it("reordena paradas de la ruta mediante PATCH /routes/:id/stops/reorder", async () => {
     const fetchMock = respond(200, { id: 10, stopsCount: 3 });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -89,7 +89,7 @@ describe("routesService", () => {
     );
   });
 
-  it("asigna un asesor y programa visitas mediante POST /routes/:id/assign (HU-20)", async () => {
+  it("asigna un asesor y programa visitas mediante POST /routes/:id/assign", async () => {
     const fetchMock = respond(200, { id: 10, advisorId: 2, status: "ASSIGNED" });
     vi.stubGlobal("fetch", fetchMock);
 

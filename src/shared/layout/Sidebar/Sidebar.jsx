@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   GitBranch,
@@ -12,84 +13,21 @@ import {
   TrendingUp,
   Settings,
   Target,
+  ChevronDown,
   X,
 } from "lucide-react";
 import { useAuth, ROLES } from "@/features/auth";
 import styles from "./Sidebar.module.css";
 
-const MENU_ITEMS = [
-  {
-    to: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
-  },
-  {
-    to: "/rutas",
-    label: "Planeación de rutas",
-    icon: GitBranch,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
-  },
-  {
-    to: "/visitas",
-    label: "Agenda",
-    icon: Calendar,
-    roles: [ROLES.ASESOR, ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
-  },
-  {
-    to: "/mapa",
-    label: "Mapa de visitas",
-    icon: Compass,
-    roles: [ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
-  },
-  {
-    to: "/clientes",
-    label: "Clientes",
-    icon: Users,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
-  },
-  {
-    to: "/visitas-gestion",
-    label: "Visitas",
-    icon: ClipboardList,
-    roles: [ROLES.ASESOR, ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
-  },
-  {
-    to: "/cotizaciones",
-    label: "Cotizaciones",
-    icon: FileText,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
-  },
-  {
-    to: "/pedidos",
-    label: "Pedidos",
-    icon: ShoppingCart,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
-  },
-  {
-    to: "/indicadores",
-    label: "Indicadores",
-    icon: BarChart2,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
-  },
-  {
-    to: "/reportes",
-    label: "Reportes",
-    icon: TrendingUp,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
-  },
-  {
-    to: "/configuracion",
-    label: "Configuración",
-    icon: Settings,
-    roles: [ROLES.ADMIN],
-  },
-];
-
 export default function Sidebar({ isOpen = false, onClose = () => {} }) {
-  const { hasRole } = useAuth();
+  const { hasRole, role } = useAuth();
+  const location = useLocation();
 
-  const accessibleItems = MENU_ITEMS.filter((item) => hasRole(item.roles));
+  // Planeación de rutas submenú desplegable
+  const isRoutesActive = location.pathname.startsWith("/rutas");
+  const [routesSubmenuOpen, setRoutesSubmenuOpen] = useState(true);
+
+  const isDirectorOrAdmin = role === ROLES.ADMIN || role === ROLES.DIRECTOR_REGIONAL;
 
   return (
     <>
@@ -119,53 +57,228 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
           </button>
         </div>
 
-        {/* Lista de navegación con micro-interacciones hover (zoom y desplazamiento) */}
+        {/* Lista de navegación */}
         <nav className={styles.nav}>
           <ul className={styles.navList}>
-            {accessibleItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
-                    }
-                  >
-                    <Icon className={styles.icon} size={19} />
-                    <span className={styles.navLabel}>{item.label}</span>
-                  </NavLink>
-                </li>
-              );
-            })}
+            {/* Dashboard */}
+            <li>
+              <NavLink
+                to="/dashboard"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <LayoutDashboard className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Dashboard</span>
+              </NavLink>
+            </li>
+
+            {/* Planeación de rutas con submenú colapsable */}
+            <li className={styles.menuGroup}>
+              <button
+                type="button"
+                className={`${styles.navItem} ${styles.submenuTrigger} ${
+                  isRoutesActive ? styles.navItemActiveParent : ""
+                }`}
+                onClick={() => setRoutesSubmenuOpen((prev) => !prev)}
+                aria-expanded={routesSubmenuOpen}
+              >
+                <div className={styles.triggerLeft}>
+                  <GitBranch className={styles.icon} size={19} />
+                  <span className={styles.navLabel}>Planeación de rutas</span>
+                </div>
+                <ChevronDown
+                  size={15}
+                  className={`${styles.chevron} ${
+                    routesSubmenuOpen ? styles.chevronOpen : ""
+                  }`}
+                />
+              </button>
+
+              {routesSubmenuOpen && (
+                <ul className={styles.submenuList}>
+                  <li>
+                    <NavLink
+                      to="/rutas"
+                      end
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `${styles.submenuItem} ${
+                          isActive ? styles.submenuItemActive : ""
+                        }`
+                      }
+                    >
+                      <span className={styles.subBullet} />
+                      <span>Creación de rutas</span>
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/rutas?vista=asignadas"
+                      onClick={onClose}
+                      className={styles.submenuItem}
+                    >
+                      <span className={styles.subBullet} />
+                      <span>Rutas asignadas</span>
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      to="/visitas"
+                      onClick={onClose}
+                      className={styles.submenuItem}
+                    >
+                      <span className={styles.subBullet} />
+                      <span>Agenda de asesores</span>
+                    </NavLink>
+                  </li>
+                </ul>
+              )}
+            </li>
+
+            {/* Mapa de visitas */}
+            <li>
+              <NavLink
+                to="/mapa"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <Compass className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Mapa de visitas</span>
+              </NavLink>
+            </li>
+
+            {/* Clientes */}
+            <li>
+              <NavLink
+                to="/clientes"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <Users className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Clientes</span>
+              </NavLink>
+            </li>
+
+            {/* Visitas */}
+            <li>
+              <NavLink
+                to="/visitas"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <ClipboardList className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Visitas</span>
+              </NavLink>
+            </li>
+
+            {/* Cotizaciones */}
+            <li>
+              <NavLink
+                to="/cotizaciones"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <FileText className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Cotizaciones</span>
+              </NavLink>
+            </li>
+
+            {/* Pedidos */}
+            <li>
+              <NavLink
+                to="/pedidos"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <ShoppingCart className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Pedidos</span>
+              </NavLink>
+            </li>
+
+            {/* Indicadores */}
+            {isDirectorOrAdmin && (
+              <li>
+                <NavLink
+                  to="/indicadores"
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                  }
+                >
+                  <BarChart2 className={styles.icon} size={19} />
+                  <span className={styles.navLabel}>Indicadores</span>
+                </NavLink>
+              </li>
+            )}
+
+            {/* Reportes */}
+            {isDirectorOrAdmin && (
+              <li>
+                <NavLink
+                  to="/reportes"
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                  }
+                >
+                  <TrendingUp className={styles.icon} size={19} />
+                  <span className={styles.navLabel}>Reportes</span>
+                </NavLink>
+              </li>
+            )}
+
+            {/* Configuración */}
+            {role === ROLES.ADMIN && (
+              <li>
+                <NavLink
+                  to="/configuracion"
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                  }
+                >
+                  <Settings className={styles.icon} size={19} />
+                  <span className={styles.navLabel}>Configuración</span>
+                </NavLink>
+              </li>
+            )}
           </ul>
         </nav>
 
-        {/* Widget inferior: Objetivo Semanal (Idéntico a la imagen de referencia) */}
-        <div className={styles.goalWidget}>
-          <div className={styles.goalHeader}>
+        {/* Widget inferior: Resumen Regional (Idéntico a la imagen del Workbench) */}
+        <div className={styles.regionalWidget}>
+          <div className={styles.regionalHeader}>
             <div className={styles.targetIconCircle}>
-              <Target size={18} />
+              <Target size={16} />
             </div>
-            <div className={styles.goalTitleBlock}>
-              <span className={styles.goalLabel}>Objetivo semanal</span>
-              <div className={styles.percentRow}>
-                <span className={styles.percentValue}>78%</span>
-                <span className={styles.percentText}>de cumplimiento</span>
-              </div>
-            </div>
+            <span className={styles.regionalTitle}>Resumen regional</span>
           </div>
 
-          {/* Barra de progreso */}
-          <div className={styles.progressBarTrack}>
-            <div className={styles.progressBarFill} style={{ width: "78%" }} />
-          </div>
-
-          <div className={styles.goalFooter}>
-            <span>Meta: 24 visitas</span>
-            <span>|</span>
-            <span>Completadas: 19</span>
+          <div className={styles.statsGrid}>
+            <div className={styles.statBox}>
+              <strong className={styles.statNumber}>24</strong>
+              <span className={styles.statLabel}>Rutas activas</span>
+            </div>
+            <div className={styles.statBox}>
+              <strong className={styles.statNumber}>12</strong>
+              <span className={styles.statLabel}>Asesores activos</span>
+            </div>
+            <div className={styles.statBox}>
+              <strong className={styles.statNumber}>1.285</strong>
+              <span className={styles.statLabel}>Clientes en la región</span>
+            </div>
           </div>
         </div>
       </aside>
