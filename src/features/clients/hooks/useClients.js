@@ -58,11 +58,17 @@ export default function useClients() {
       });
 
       if (data) {
-        setClients(data.items || []);
+        const clientList = Array.isArray(data)
+          ? data
+          : data.data || data.items || [];
+        const total = data?.meta?.total ?? data?.total ?? clientList.length;
+        const totalPages = data?.meta?.totalPages ?? data?.totalPages ?? 1;
+
+        setClients(clientList);
         setPagination((prev) => ({
           ...prev,
-          total: data.total || 0,
-          totalPages: data.totalPages || 1,
+          total,
+          totalPages,
         }));
       }
     } catch (err) {
