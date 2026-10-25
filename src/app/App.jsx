@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, LoginPage, useAuth, ROLES } from "@/features/auth";
 import { DashboardPage } from "@/features/dashboard";
+import { ClientsPage } from "@/features/clients";
 import AppLayout from "@/shared/layout/AppLayout";
 import ProtectedRoute from "@/shared/components/ProtectedRoute/ProtectedRoute";
 import PlaceholderPage from "@/shared/components/PlaceholderPage/PlaceholderPage";
@@ -41,28 +42,11 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
 
-            {/* Dashboard / KPIs (Accesible por ADMIN, DIRECTOR_REGIONAL, ASESOR) */}
+            {/* Dashboard / KPIs */}
             <Route path="dashboard" element={<DashboardPage />} />
 
-            {/* Clientes */}
-            <Route
-              path="clientes"
-              element={
-                <PlaceholderPage
-                  title="Directorio y Gestión de Clientes"
-                  description="Consulta, registro y edición de clientes con geocodificación automática (OSM), contactos y regla de contacto principal único."
-                  moduleCode="Épica E2 (HU-11 a HU-16)"
-                  targetEndpoints={[
-                    "GET /clients (Paginado + Filtros de Zona/Tipo)",
-                    "POST /clients (Geocodificación automática)",
-                    "PATCH /clients/:id (Actualización parcial)",
-                    "GET /clients/:id/contacts (Contactos del cliente)",
-                    "POST /clients/:id/contacts (Contacto principal)",
-                    "PATCH /clients/:id/contacts/:contactId/primary",
-                  ]}
-                />
-              }
-            />
+            {/* Módulo de Clientes (HU-11 a HU-13) */}
+            <Route path="clientes" element={<ClientsPage />} />
 
             {/* Planeación de Rutas (ADMIN y DIRECTOR_REGIONAL) */}
             <Route
