@@ -109,8 +109,8 @@ export default function ClientFormModal({
       potentialId: Number(formData.potentialId),
       clientStatusId: Number(formData.clientStatusId),
       visitFrequencyDays: Number(formData.visitFrequencyDays) || 15,
-      latitude: formData.latitude !== "" ? Number(formData.latitude) : null,
-      longitude: formData.longitude !== "" ? Number(formData.longitude) : null,
+      latitude: formData.latitude !== "" && !isNaN(Number(formData.latitude)) ? Number(formData.latitude) : null,
+      longitude: formData.longitude !== "" && !isNaN(Number(formData.longitude)) ? Number(formData.longitude) : null,
     };
 
     setLoading(true);
@@ -264,11 +264,40 @@ export default function ClientFormModal({
               </div>
             </div>
 
+            {/* Coordenadas GPS Opcionales / Manuales */}
+            <div className={styles.grid2}>
+              <div className={styles.field}>
+                <label htmlFor="latitude">Latitud GPS (Opcional)</label>
+                <input
+                  id="latitude"
+                  name="latitude"
+                  type="number"
+                  step="any"
+                  placeholder="Ej: 11.01019"
+                  value={formData.latitude}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="longitude">Longitud GPS (Opcional)</label>
+                <input
+                  id="longitude"
+                  name="longitude"
+                  type="number"
+                  step="any"
+                  placeholder="Ej: -74.82318"
+                  value={formData.longitude}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
             {/* Aviso de Geocodificación Automática */}
             <div className={styles.geoNotice}>
               <MapPin size={16} className={styles.geoIcon} />
               <span>
-                <strong>Geocodificación Automática:</strong> El backend resolverá las coordenadas GPS de la dirección automáticamente si dejas la latitud y longitud vacías.
+                <strong>Georreferenciación Inteligente:</strong> Puedes ingresar las coordenadas GPS manualmente o dejarlas vacías para que el sistema las calcule automáticamente a partir de la dirección ingresada (OpenStreetMap).
               </span>
             </div>
 
