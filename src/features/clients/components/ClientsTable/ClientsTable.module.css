@@ -83,26 +83,47 @@
   color: #64748b;
 }
 
-.gpsTag {
+.gpsButton {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: 5px;
+  font-size: 11.5px;
   font-weight: 600;
-  margin-top: 3px;
+  margin-top: 4px;
   width: fit-content;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
 }
 
 .gpsActive {
   background: #ecfdf5;
   color: #059669;
+  border-color: #a7f3d0;
+}
+
+.gpsActive:hover {
+  background: #d1fae5;
+  color: #047857;
+  border-color: #6ee7b7;
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 3px 8px rgba(5, 150, 105, 0.22);
 }
 
 .gpsMissing {
   background: #fef2f2;
   color: #dc2626;
+  border-color: #fecaca;
+}
+
+.gpsMissing:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+  transform: translateY(-1px);
 }
 
 .metaCell {

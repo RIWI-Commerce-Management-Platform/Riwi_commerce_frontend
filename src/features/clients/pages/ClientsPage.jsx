@@ -5,6 +5,7 @@ import ClientFilters from "../components/ClientFilters/ClientFilters";
 import ClientsTable from "../components/ClientsTable/ClientsTable";
 import ClientFormModal from "../components/ClientFormModal/ClientFormModal";
 import ClientContactsModal from "../components/ClientContactsModal/ClientContactsModal";
+import ClientMapModal from "../components/ClientMapModal/ClientMapModal";
 import styles from "./ClientsPage.module.css";
 
 export default function ClientsPage() {
@@ -28,6 +29,14 @@ export default function ClientsPage() {
 
   const [contactsModalOpen, setContactsModalOpen] = useState(false);
   const [clientForContacts, setClientForContacts] = useState(null);
+
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [clientForMap, setClientForMap] = useState(null);
+
+  const handleOpenMapModal = (client) => {
+    setClientForMap(client);
+    setMapModalOpen(true);
+  };
 
   const handleOpenCreateModal = () => {
     setClientToEdit(null);
@@ -107,6 +116,7 @@ export default function ClientsPage() {
         onEditClient={handleOpenEditModal}
         onManageContacts={handleOpenContactsModal}
         onToggleStatus={handleToggleStatus}
+        onOpenMap={handleOpenMapModal}
       />
 
       {/* Modal de Creación / Edición de Cliente */}
@@ -123,6 +133,13 @@ export default function ClientsPage() {
         isOpen={contactsModalOpen}
         client={clientForContacts}
         onClose={() => setContactsModalOpen(false)}
+      />
+
+      {/* Modal de Visualización de Ubicación y Mapa Interactivo */}
+      <ClientMapModal
+        isOpen={mapModalOpen}
+        client={clientForMap}
+        onClose={() => setMapModalOpen(false)}
       />
     </div>
   );

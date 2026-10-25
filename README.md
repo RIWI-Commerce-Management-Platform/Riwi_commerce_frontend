@@ -56,21 +56,35 @@ src/
 │   └── global.css                # Reseteo y estilos base globales
 ├── shared/
 │   ├── components/               # Componentes atómicos de UI (Button, TextField, Checkbox, etc.)
-│   ├── layout/                   # Layout responsive unificado (AppLayout, Sidebar con drawer móvil, Header)
+│   ├── layout/                   # Layout responsive unificado (AppLayout, Sidebar con micro-interacciones, Header)
 │   └── services/
 │       └── apiClient.js          # Cliente HTTP reutilizable con credentials: "include" y manejo de errores
 └── features/
     ├── auth/                     # Módulo de Autenticación (HU-05, HU-08)
     │   ├── context/AuthContext   # Estado global de sesión, roles (ADMIN, DIRECTOR_REGIONAL, ASESOR) y verificación de GET /auth/me
     │   ├── pages/LoginPage       # Vista de login con diseño responsivo split-panel
-    │   ├── components/           # BrandPanel, LoginCard, LoginForm, MicrosoftButton
-    │   ├── hooks/useLoginForm    # Validación y llamada al login
     │   └── services/authService  # Integración con POST /auth/login y GET /auth/me
-    └── dashboard/                # Módulo de Dashboard Comercial (HU-35)
-        ├── pages/DashboardPage   # Tarjetas de KPIs y filtros por semana/territorio
-        ├── components/           # DashboardFilters, KpiCard
-        └── services/             # Integración con GET /dashboard/kpis
+    ├── dashboard/                # Módulo de Dashboard Comercial (HU-35)
+    │   ├── pages/DashboardPage   # Tarjetas de KPIs y filtros por semana/territorio
+    │   └── services/             # Integración con GET /dashboard/kpis
+    └── clients/                  # Directorio y Gestión de Clientes (HU-11, HU-12, HU-13)
+        ├── pages/ClientsPage     # Vista principal de clientes con búsqueda y filtros
+        ├── components/
+        │   ├── ClientsTable      # Tabla con paginación, estados y botón de mapa interactivo
+        │   ├── ClientFilters     # Barra de filtros (NIT, Zona, Tipo, Potencial, Estado)
+        │   ├── ClientFormModal   # Modal de creación/edición con soporte GPS manual y automático
+        │   ├── ClientContactsModal # Gestión de contactos y contacto principal (HU-13)
+        │   └── ClientMapModal    # Visualizador de mapa interactivo con Leaflet y OpenStreetMap
+        └── services/             # Integración con endpoints /clients y /catalogs
 ```
+
+---
+
+## 🗺️ Mapa Interactivo y Georreferenciación (Leaflet & OSM)
+
+- Al hacer clic en la pastilla **`Geolocalizado`** dentro del Directorio de Clientes, se abre el modal interactivo con el mapa centrado en las coordenadas exactas (`latitude`, `longitude`).
+- Incluye pin visual personalizado animado, ficha de datos del cliente, botón para copiar coordenadas al portapapeles y enlaces directos de navegación (*Cómo llegar con Google Maps* y *OpenStreetMap*).
+- Si el cliente no cuenta con coordenadas, el sistema permite editarlas manualmente en el formulario o geocodificarlas automáticamente a partir de la dirección física.
 
 ---
 
@@ -86,4 +100,4 @@ La aplicación utiliza **Better Auth** con cookies HttpOnly gestionadas automát
 ## 📱 Diseño Responsivo Móvil
 
 - **Pantalla de Login:** En pantallas móviles (`<= 960px`), el panel ilustrativo lateral se oculta de forma fluida, centrando la tarjeta de acceso para que el usuario pueda ingresar de inmediato sin desplazamientos innecesarios.
-- **Sidebar & Layout:** En pantallas grandes se mantiene fija a la izquierda. En dispositivos móviles (`<= 960px`), se transforma en un **menú lateral desplegable (Drawer)** accesible desde el botón de hamburguesa en la cabecera.
+- **Sidebar & Header:** En pantallas grandes se mantiene fija a la izquierda con animaciones de elevación táctil (*hover zoom*). En dispositivos móviles (`<= 960px`), se transforma en un **menú lateral desplegable (Drawer)** accesible desde el botón de hamburguesa en la cabecera.

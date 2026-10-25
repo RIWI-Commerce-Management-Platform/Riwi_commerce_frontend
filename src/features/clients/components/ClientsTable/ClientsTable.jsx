@@ -35,6 +35,7 @@ export default function ClientsTable({
   onEditClient,
   onManageContacts,
   onToggleStatus,
+  onOpenMap,
 }) {
   if (loading && clients.length === 0) {
     return (
@@ -93,17 +94,19 @@ export default function ClientsTable({
                         {client.neighborhood ? `${client.neighborhood}, ` : ""}
                         {client.municipality}
                       </span>
-                      <span
-                        className={`${styles.gpsTag} ${hasGps ? styles.gpsActive : styles.gpsMissing}`}
+                      <button
+                        type="button"
+                        className={`${styles.gpsButton} ${hasGps ? styles.gpsActive : styles.gpsMissing}`}
+                        onClick={() => (hasGps ? onOpenMap?.(client) : onEditClient?.(client))}
                         title={
                           hasGps
-                            ? `Lat: ${client.latitude}, Lon: ${client.longitude}`
-                            : "Sin coordenadas calculadas"
+                            ? `Haz clic para ver la ubicación en el mapa (Lat: ${client.latitude}, Lon: ${client.longitude})`
+                            : "Sin coordenadas calculadas. Haz clic para editar."
                         }
                       >
                         <MapPin size={12} />
                         <span>{hasGps ? "Geolocalizado" : "Sin GPS"}</span>
-                      </span>
+                      </button>
                     </div>
                   </td>
 
