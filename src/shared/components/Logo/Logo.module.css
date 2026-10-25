@@ -1,9 +1,45 @@
 .logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 0.4em;
-  font-size: clamp(28px, 5.4vh, 46px);
   font-weight: 800;
   letter-spacing: -0.5px;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.markSvg {
+  flex-shrink: 0;
+}
+
+.text {
+  white-space: nowrap;
+}
+
+/* Tamaños */
+.lg {
+  font-size: clamp(26px, 5vh, 42px);
+}
+
+.md {
+  font-size: 20px;
+  gap: 8px;
+}
+
+.sm {
+  font-size: 18px;
+  gap: 8px;
+}
+
+/* Colores de texto */
+.light {
+  color: #ffffff;
+}
+
+.dark {
+  color: #0b2545;
+}
+
+.default {
+  color: inherit;
 }

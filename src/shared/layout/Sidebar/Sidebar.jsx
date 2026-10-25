@@ -1,19 +1,19 @@
 import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
-  Users,
-  MapPin,
+  GitBranch,
   Calendar,
-  Navigation,
+  Compass,
+  Users,
+  ClipboardList,
   FileText,
-  UserCheck,
-  Layers,
-  BarChart3,
-  LogOut,
-  ChevronRight,
+  ShoppingCart,
+  BarChart2,
+  TrendingUp,
+  Settings,
+  Target,
   X,
 } from "lucide-react";
-import Logo from "@/shared/components/Logo/Logo";
 import { useAuth, ROLES } from "@/features/auth";
 import styles from "./Sidebar.module.css";
 
@@ -25,79 +25,69 @@ const MENU_ITEMS = [
     roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
   },
   {
+    to: "/rutas",
+    label: "Planeación de rutas",
+    icon: GitBranch,
+    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
+  },
+  {
+    to: "/visitas",
+    label: "Agenda",
+    icon: Calendar,
+    roles: [ROLES.ASESOR, ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
+  },
+  {
+    to: "/mapa",
+    label: "Mapa de visitas",
+    icon: Compass,
+    roles: [ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
+  },
+  {
     to: "/clientes",
     label: "Clientes",
     icon: Users,
     roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
   },
   {
-    to: "/rutas",
-    label: "Planeación de Rutas",
-    icon: MapPin,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
-  },
-  {
-    to: "/visitas",
-    label: "Agenda de Visitas",
-    icon: Calendar,
+    to: "/visitas-gestion",
+    label: "Visitas",
+    icon: ClipboardList,
     roles: [ROLES.ASESOR, ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
   },
   {
-    to: "/mapa",
-    label: "Mapa de Visitas",
-    icon: Navigation,
-    roles: [ROLES.DIRECTOR_REGIONAL, ROLES.ADMIN],
-  },
-  {
     to: "/cotizaciones",
-    label: "Cotizaciones y Pedidos",
+    label: "Cotizaciones",
     icon: FileText,
     roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
   },
   {
-    to: "/asesores",
-    label: "Gestión de Asesores",
-    icon: UserCheck,
-    roles: [ROLES.ADMIN],
+    to: "/pedidos",
+    label: "Pedidos",
+    icon: ShoppingCart,
+    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
   },
   {
-    to: "/catalogos",
-    label: "Catálogos y Parámetros",
-    icon: Layers,
-    roles: [ROLES.ADMIN],
+    to: "/indicadores",
+    label: "Indicadores",
+    icon: BarChart2,
+    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
   },
   {
     to: "/reportes",
-    label: "Reportes CSV",
-    icon: BarChart3,
+    label: "Reportes",
+    icon: TrendingUp,
     roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
+  },
+  {
+    to: "/configuracion",
+    label: "Configuración",
+    icon: Settings,
+    roles: [ROLES.ADMIN],
   },
 ];
 
-function getRoleLabel(role, zoneId) {
-  switch (role) {
-    case ROLES.ADMIN:
-      return "Administrador";
-    case ROLES.DIRECTOR_REGIONAL:
-      return zoneId ? `Director Reg. (Zona ${zoneId})` : "Director Regional";
-    case ROLES.ASESOR:
-      return "Asesor Comercial";
-    default:
-      return role || "Usuario";
-  }
-}
-
-function getInitials(name = "") {
-  if (!name) return "U";
-  const parts = name.trim().split(" ");
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
-  }
-  return name.slice(0, 2).toUpperCase();
-}
-
 export default function Sidebar({ isOpen = false, onClose = () => {} }) {
-  const { user, role, zoneId, logout, hasRole } = useAuth();
+  const { hasRole } = useAuth();
 
   const accessibleItems = MENU_ITEMS.filter((item) => hasRole(item.roles));
 
@@ -116,11 +106,9 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
         className={`${styles.sidebar} ${isOpen ? styles.sidebarOpen : ""}`}
         aria-label="Barra lateral de navegación"
       >
-        {/* Cabecera del Sidebar con Logo y botón cerrar en móvil */}
-        <div className={styles.header}>
-          <div className={styles.logoWrapper}>
-            <Logo />
-          </div>
+        {/* Cabecera solo visible en móvil para el botón cerrar */}
+        <div className={styles.mobileHeader}>
+          <span className={styles.mobileTitle}>Menú Comercial</span>
           <button
             type="button"
             className={styles.closeBtn}
@@ -131,9 +119,8 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
           </button>
         </div>
 
-        {/* Navegación con items filtrados por rol */}
+        {/* Lista de navegación con micro-interacciones hover (zoom y desplazamiento) */}
         <nav className={styles.nav}>
-          <div className={styles.sectionLabel}>Menú Principal</div>
           <ul className={styles.navList}>
             {accessibleItems.map((item) => {
               const Icon = item.icon;
@@ -146,9 +133,8 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                       `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
                     }
                   >
-                    <Icon className={styles.icon} size={20} />
+                    <Icon className={styles.icon} size={19} />
                     <span className={styles.navLabel}>{item.label}</span>
-                    <ChevronRight className={styles.arrow} size={14} />
                   </NavLink>
                 </li>
               );
@@ -156,29 +142,30 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
           </ul>
         </nav>
 
-        {/* Tarjeta inferior con el usuario autenticado y botón de cierre de sesión */}
-        <div className={styles.footer}>
-          <div className={styles.userCard}>
-            <div className={styles.avatar}>
-              {getInitials(user?.name || user?.email)}
+        {/* Widget inferior: Objetivo Semanal (Idéntico a la imagen de referencia) */}
+        <div className={styles.goalWidget}>
+          <div className={styles.goalHeader}>
+            <div className={styles.targetIconCircle}>
+              <Target size={18} />
             </div>
-            <div className={styles.userInfo}>
-              <span className={styles.userName} title={user?.name || user?.email}>
-                {user?.name || user?.email?.split("@")[0]}
-              </span>
-              <span className={styles.userRole}>
-                {getRoleLabel(role, zoneId)}
-              </span>
+            <div className={styles.goalTitleBlock}>
+              <span className={styles.goalLabel}>Objetivo semanal</span>
+              <div className={styles.percentRow}>
+                <span className={styles.percentValue}>78%</span>
+                <span className={styles.percentText}>de cumplimiento</span>
+              </div>
             </div>
-            <button
-              type="button"
-              className={styles.logoutBtn}
-              onClick={logout}
-              title="Cerrar sesión"
-              aria-label="Cerrar sesión"
-            >
-              <LogOut size={18} />
-            </button>
+          </div>
+
+          {/* Barra de progreso */}
+          <div className={styles.progressBarTrack}>
+            <div className={styles.progressBarFill} style={{ width: "78%" }} />
+          </div>
+
+          <div className={styles.goalFooter}>
+            <span>Meta: 24 visitas</span>
+            <span>|</span>
+            <span>Completadas: 19</span>
           </div>
         </div>
       </aside>
