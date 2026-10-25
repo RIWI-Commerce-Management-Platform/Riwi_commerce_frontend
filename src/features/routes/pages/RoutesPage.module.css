@@ -525,11 +525,47 @@
   transform: scale(1.15);
 }
 
+.availablePin {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.availablePin:hover {
+  transform: scale(1.3);
+  background: #ea580c;
+}
+
 /* Columna Derecha */
 .colRight {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.cardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clientCountBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 12px;
 }
 
 .searchBox {
@@ -658,6 +694,27 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.clientMiniCoords {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.emptyClientsNotice {
+  padding: 20px 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.emptyClientsNotice p {
+  margin: 0;
 }
 
 .clientAddBtn {
@@ -908,9 +965,33 @@
 
 .emptyTableTd {
   text-align: center;
-  padding: 36px !important;
+  padding: 36px 16px !important;
   color: #94a3b8;
   font-size: 13.5px;
+}
+
+.emptyTableMessage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  padding: 14px 0;
+}
+
+.emptyTableMessage p {
+  font-size: 14px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0;
+}
+
+.emptyTableMessage span {
+  font-size: 12.5px;
+  color: #64748b;
+  max-width: 480px;
+  line-height: 1.4;
 }
 
 /* Responsiveness */

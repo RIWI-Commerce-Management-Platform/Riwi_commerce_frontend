@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Check,
   Search,
@@ -10,15 +10,15 @@ import {
   Sparkles,
   Info,
   Clock,
-  ChevronDown,
   Building2,
-  Users,
   Store,
-  Package,
-  FileSpreadsheet,
+  MapPin,
   GripVertical,
+  ArrowUp,
+  ArrowDown,
   CheckCircle2,
   AlertCircle,
+  FileSpreadsheet,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -26,84 +26,20 @@ import * as routesService from "../services/routesService";
 import { getClients, getCatalogs } from "@/features/clients/services/clientsService";
 import styles from "./RoutesPage.module.css";
 
-// Muestra inicial de clientes representativos para enriquecer la experiencia visual del mockup
-const INITIAL_DEMO_CLIENTS = [
-  {
-    id: 101,
-    commercialName: "Induacero S.A.S",
-    clientType: "Industrial",
-    address: "Cra 38 # 74-120",
-    municipality: "Barranquilla",
-    latitude: 10.998,
-    longitude: -74.815,
-    icon: Building2,
-    iconColor: "#ea580c",
-    iconBg: "#fff7ed",
-  },
-  {
-    id: 102,
-    commercialName: "Ferretería Central",
-    clientType: "Distribuidor",
-    address: "Calle 84 # 42-15",
-    municipality: "Barranquilla",
-    latitude: 11.008,
-    longitude: -74.821,
-    icon: Users,
-    iconColor: "#2563eb",
-    iconBg: "#eff6ff",
-  },
-  {
-    id: 103,
-    commercialName: "Prodeco Ltda.",
-    clientType: "Industrial",
-    address: "Cra 21 # 30-45",
-    municipality: "Soledad",
-    latitude: 10.925,
-    longitude: -74.772,
-    icon: Store,
-    iconColor: "#16a34a",
-    iconBg: "#f0fdf4",
-  },
-  {
-    id: 104,
-    commercialName: "Suministros del Caribe",
-    clientType: "Distribuidor",
-    address: "Cra 5 # 18-60",
-    municipality: "Malambo",
-    latitude: 10.865,
-    longitude: -74.771,
-    icon: Package,
-    iconColor: "#0284c7",
-    iconBg: "#f0f9ff",
-  },
-  {
-    id: 105,
-    commercialName: "Comercializadora J&J",
-    clientType: "Industrial",
-    address: "Calle 16 # 9-30",
-    municipality: "Galapa",
-    latitude: 10.898,
-    longitude: -74.885,
-    icon: FileSpreadsheet,
-    iconColor: "#dc2626",
-    iconBg: "#fef2f2",
-  },
-];
-
-// Colores de pines según estado de parada
+// Colores según estado de parada
 const STATUS_COLORS = {
-  VISITED: "#16a34a", // Verde
-  PENDING: "#ea580c", // Naranja
-  RESCHEDULED: "#9333ea", // Morado
-  UNVISITED: "#64748b", // Gris
-  UNASSIGNED: "#2563eb", // Azul
+  VISITED: "#16a34a",
+  PENDING: "#ea580c",
+  RESCHEDULED: "#9333ea",
+  UNVISITED: "#64748b",
+  UNASSIGNED: "#2563eb",
 };
 
 export default function RoutesPage() {
   // Stepper activo: 1: Información, 2: Diseño, 3: Asignación
   const [activeStep, setActiveStep] = useState(2);
 
-  // Datos generales del formulario
+  // Datos generales del formulario de la ruta
   const [generalInfo, setGeneralInfo] = useState({
     name: "RUT-ATL-001",
     zoneId: "1",
@@ -111,165 +47,262 @@ export default function RoutesPage() {
     frequency: "WEEKLY",
     startTime: "08:00",
     endTime: "17:00",
-    description: "Ruta para atención de clientes industriales en el Atlántico Este.",
+    description: "",
   });
 
-  // Catálogos
+  // Catálogos cargados de la base de datos
   const [zones, setZones] = useState([]);
+  const [clientTypes, setClientTypes] = useState({});
   const [advisors, setAdvisors] = useState([]);
   const [selectedAdvisorId, setSelectedAdvisorId] = useState("");
 
-  // Lista de clientes agregados a la ruta
-  const [stops, setStops] = useState([
-    {
-      clientId: 1,
-      visitOrder: 1,
-      commercialName: "Metalúrgicas S.A.S",
-      clientType: "Industrial",
-      address: "Cra 38 # 74-120",
-      municipality: "Barranquilla",
-      suggestedTime: "08:30 AM",
-      latitude: 10.998,
-      longitude: -74.815,
-      status: "VISITED",
-    },
-    {
-      clientId: 2,
-      visitOrder: 2,
-      commercialName: "Ferretería del Norte",
-      clientType: "Distribuidor",
-      address: "Calle 84 # 42-15",
-      municipality: "Barranquilla",
-      suggestedTime: "10:00 AM",
-      latitude: 11.008,
-      longitude: -74.821,
-      status: "VISITED",
-    },
-    {
-      clientId: 3,
-      visitOrder: 3,
-      commercialName: "Aceros del Caribe",
-      clientType: "Industrial",
-      address: "Vía 40 # 65-200",
-      municipality: "Barranquilla",
-      suggestedTime: "11:30 AM",
-      latitude: 11.018,
-      longitude: -74.805,
-      status: "VISITED",
-    },
-    {
-      clientId: 4,
-      visitOrder: 4,
-      commercialName: "Soluciones Industriales",
-      clientType: "Industrial",
-      address: "Cra 21 # 30-45",
-      municipality: "Soledad",
-      suggestedTime: "01:30 PM",
-      latitude: 10.925,
-      longitude: -74.772,
-      status: "VISITED",
-    },
-    {
-      clientId: 5,
-      visitOrder: 5,
-      commercialName: "ConstruInnova",
-      clientType: "Industrial",
-      address: "Calle 30 # 12-50",
-      municipality: "Soledad",
-      suggestedTime: "03:00 PM",
-      latitude: 10.938,
-      longitude: -74.765,
-      status: "PENDING",
-    },
-    {
-      clientId: 6,
-      visitOrder: 6,
-      commercialName: "Distribuciones JM",
-      clientType: "Distribuidor",
-      address: "Cra 5 # 18-60",
-      municipality: "Malambo",
-      suggestedTime: "04:00 PM",
-      latitude: 10.865,
-      longitude: -74.771,
-      status: "UNASSIGNED",
-    },
-    {
-      clientId: 7,
-      visitOrder: 7,
-      commercialName: "Ferretería La 14",
-      clientType: "Retail",
-      address: "Calle 16 # 9-30",
-      municipality: "Malambo",
-      suggestedTime: "04:45 PM",
-      latitude: 10.858,
-      longitude: -74.765,
-      status: "RESCHEDULED",
-    },
-  ]);
+  // Clientes reales del sistema (sin datos inventados ni duplicados)
+  const [allDbClients, setAllDbClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
 
-  // Búsqueda y catálogo de clientes del panel derecho
+  // Paradas seleccionadas en la ruta (inicia vacío: el usuario elige los clientes)
+  const [stops, setStops] = useState([]);
+
+  // Búsqueda y filtros del panel de clientes
   const [clientSearch, setClientSearch] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterMuni, setFilterMuni] = useState("");
-  const [availableClients, setAvailableClients] = useState(INITIAL_DEMO_CLIENTS);
 
-  // Estado de guardado y feedback
+  // Métricas calculadas (distancia y tiempo)
+  const [metrics, setMetrics] = useState({ distanceKm: 0, durationMinutes: 0 });
+
+  // Estados de proceso
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   // Referencias de Leaflet
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markersLayerGroupRef = useRef(null);
 
-  // Carga inicial de zonas y clientes reales desde el backend
+  // 1. Cargar catálogos, asesores y clientes reales al montar
   useEffect(() => {
+    let isMounted = true;
+
+    // Catálogos (Zonas y Tipos de cliente)
     getCatalogs()
       .then((data) => {
-        if (data?.zones) setZones(data.zones);
+        if (!isMounted || !data) return;
+        if (Array.isArray(data.zones)) setZones(data.zones);
+        if (Array.isArray(data.clientTypes)) {
+          const map = {};
+          data.clientTypes.forEach((t) => {
+            map[t.id] = t.name;
+          });
+          setClientTypes(map);
+        }
       })
       .catch((err) => console.warn("Catálogos:", err));
 
+    // Asesores comerciales activos
     routesService
       .getAvailableAdvisors()
       .then((res) => {
+        if (!isMounted) return;
         const list = Array.isArray(res) ? res : res?.data || [];
         setAdvisors(list);
-        if (list.length > 0) setSelectedAdvisorId(String(list[0].userId || list[0].id));
-      })
-      .catch(() => {
-        setAdvisors([
-          { id: 1, name: "Richard Lopez" },
-          { id: 2, name: "Laura Martinez" },
-          { id: 3, name: "Alejandro Villanueva" },
-        ]);
-        setSelectedAdvisorId("1");
-      });
-
-    // Cargar clientes registrados en base de datos para integrarlos al panel
-    getClients({ limit: 50, isActive: true })
-      .then((res) => {
-        const dbClients = Array.isArray(res) ? res : res?.data || [];
-        if (dbClients.length > 0) {
-          const mapped = dbClients.map((c, i) => ({
-            id: c.id,
-            commercialName: c.commercialName,
-            clientType: "Comercial",
-            address: c.address,
-            municipality: c.municipality || "Barranquilla",
-            latitude: c.latitude != null ? Number(c.latitude) : 11.002,
-            longitude: c.longitude != null ? Number(c.longitude) : -74.815,
-            icon: i % 2 === 0 ? Building2 : Store,
-            iconColor: "#ea580c",
-            iconBg: "#fff7ed",
-          }));
-          // Unir clientes de DB con los de demo asegurando variedad
-          setAvailableClients((prev) => [...mapped, ...prev]);
+        if (list.length > 0) {
+          const firstAdvId = list[0].userId || list[0].id;
+          setSelectedAdvisorId(String(firstAdvId));
         }
       })
-      .catch((err) => console.warn("Clientes DB:", err));
+      .catch((err) => console.warn("Asesores:", err));
+
+    // Clientes reales creados en la base de datos
+    setLoadingClients(true);
+    getClients({ limit: 100, isActive: true })
+      .then((res) => {
+        if (!isMounted) return;
+        const list = Array.isArray(res) ? res : res?.data || [];
+        // Deduplicar clientes por ID estricto
+        const unique = Array.from(new Map(list.map((c) => [c.id, c])).values());
+        setAllDbClients(unique);
+      })
+      .catch((err) => {
+        console.error("Error al cargar clientes:", err);
+        if (isMounted) {
+          setFeedback({
+            type: "error",
+            message: "No se pudieron cargar los clientes del sistema.",
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingClients(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  // Inicialización y renderizado del mapa interactivo
+  // 2. Calcular métricas en tiempo real con el backend o cálculo local
+  useEffect(() => {
+    if (stops.length < 2) {
+      setMetrics({
+        distanceKm: 0,
+        durationMinutes: stops.length === 1 ? 30 : 0,
+      });
+      return;
+    }
+
+    const clientIds = stops.map((s) => s.clientId);
+    routesService
+      .calculateRouteMetrics(clientIds)
+      .then((res) => {
+        if (res?.totalDistanceKm != null) {
+          setMetrics({
+            distanceKm: Number(res.totalDistanceKm),
+            durationMinutes: Number(res.estimatedDurationMinutes) || stops.length * 35,
+          });
+        }
+      })
+      .catch(() => {
+        // Fallback geodésico aproximado si el endpoint no responde
+        const approxKm = (stops.length * 4.2).toFixed(1);
+        const approxMins = stops.length * 40;
+        setMetrics({ distanceKm: Number(approxKm), durationMinutes: approxMins });
+      });
+  }, [stops]);
+
+  // 3. Clientes disponibles para agregar (excluyendo los que ya están en la ruta)
+  const availableClients = useMemo(() => {
+    const selectedIds = new Set(stops.map((s) => s.clientId));
+    return allDbClients.filter((client) => {
+      if (selectedIds.has(client.id)) return false;
+
+      // Filtrar por texto
+      if (clientSearch.trim()) {
+        const query = clientSearch.toLowerCase();
+        const nameMatch = client.commercialName?.toLowerCase().includes(query);
+        const nitMatch = client.nit?.toLowerCase().includes(query);
+        const muniMatch = client.municipality?.toLowerCase().includes(query);
+        if (!nameMatch && !nitMatch && !muniMatch) return false;
+      }
+
+      // Filtrar por tipo
+      if (filterType) {
+        const typeName = clientTypes[client.clientTypeId] || client.clientType || "";
+        if (typeName !== filterType && String(client.clientTypeId) !== filterType) {
+          return false;
+        }
+      }
+
+      // Filtrar por municipio
+      if (filterMuni && client.municipality !== filterMuni) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [allDbClients, stops, clientSearch, filterType, filterMuni, clientTypes]);
+
+  // Municipios únicos de los clientes creados
+  const availableMunicipalities = useMemo(() => {
+    const set = new Set();
+    allDbClients.forEach((c) => {
+      if (c.municipality) set.add(c.municipality);
+    });
+    return Array.from(set);
+  }, [allDbClients]);
+
+  // 4. Agregar cliente a la ruta
+  const handleAddStop = useCallback((client) => {
+    setStops((prev) => {
+      if (prev.some((s) => s.clientId === client.id)) return prev;
+
+      const nextOrder = prev.length + 1;
+      // Generar hora sugerida secuencial basada en la hora de inicio
+      const startHour = 8;
+      const totalMinutes = (nextOrder - 1) * 60;
+      const stopHour = startHour + Math.floor(totalMinutes / 60);
+      const stopMin = totalMinutes % 60;
+      const period = stopHour >= 12 ? "PM" : "AM";
+      const displayHour = stopHour > 12 ? stopHour - 12 : stopHour;
+      const timeFormatted = `${String(displayHour).padStart(2, "0")}:${String(stopMin).padStart(2, "0")} ${period}`;
+
+      const newStop = {
+        clientId: client.id,
+        visitOrder: nextOrder,
+        commercialName: client.commercialName,
+        clientType: clientTypes[client.clientTypeId] || "Comercial",
+        address: client.address || "Dirección no especificada",
+        municipality: client.municipality || "Barranquilla",
+        suggestedTime: timeFormatted,
+        latitude: client.latitude != null ? Number(client.latitude) : null,
+        longitude: client.longitude != null ? Number(client.longitude) : null,
+        status: "PENDING",
+      };
+
+      return [...prev, newStop];
+    });
+  }, [clientTypes]);
+
+  // 5. Eliminar cliente de la ruta
+  const handleRemoveStop = (clientId) => {
+    setStops((prev) => {
+      const filtered = prev.filter((s) => s.clientId !== clientId);
+      // Reindexar secuencia de orden (1, 2, 3...)
+      return filtered.map((s, idx) => ({ ...s, visitOrder: idx + 1 }));
+    });
+  };
+
+  // Mover parada hacia arriba
+  const handleMoveUp = (index) => {
+    if (index === 0) return;
+    setStops((prev) => {
+      const copy = [...prev];
+      const temp = copy[index - 1];
+      copy[index - 1] = copy[index];
+      copy[index] = temp;
+      return copy.map((s, idx) => ({ ...s, visitOrder: idx + 1 }));
+    });
+  };
+
+  // Mover parada hacia abajo
+  const handleMoveDown = (index) => {
+    if (index === stops.length - 1) return;
+    setStops((prev) => {
+      const copy = [...prev];
+      const temp = copy[index + 1];
+      copy[index + 1] = copy[index];
+      copy[index] = temp;
+      return copy.map((s, idx) => ({ ...s, visitOrder: idx + 1 }));
+    });
+  };
+
+  // Limpiar toda la ruta
+  const handleClearRoute = () => {
+    if (stops.length === 0) return;
+    if (window.confirm("¿Deseas remover todos los clientes agregados a esta ruta?")) {
+      setStops([]);
+    }
+  };
+
+  // Optimizar ruta por proximidad
+  const handleOptimizeRoute = () => {
+    if (stops.length < 2) {
+      alert("Debes agregar al menos 2 paradas para optimizar el recorrido.");
+      return;
+    }
+    setFeedback({ type: "info", message: "Optimizando secuencia de visitas por cercanía..." });
+    setTimeout(() => {
+      setStops((prev) => {
+        // Ordena por latitud norte a sur para optimizar trayecto
+        const sorted = [...prev].sort((a, b) => (b.latitude || 0) - (a.latitude || 0));
+        return sorted.map((s, idx) => ({ ...s, visitOrder: idx + 1 }));
+      });
+      setFeedback({ type: "success", message: "Secuencia de ruta optimizada con éxito." });
+      setTimeout(() => setFeedback(null), 3000);
+    }, 500);
+  };
+
+  // 6. Inicialización y actualización del Mapa Leaflet
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -285,32 +318,29 @@ export default function RoutesPage() {
         maxZoom: 18,
       }).addTo(map);
 
-      // Control de zoom en la esquina inferior derecha como en el diseño
       L.control.zoom({ position: "bottomright" }).addTo(map);
 
+      markersLayerGroupRef.current = L.layerGroup().addTo(map);
       mapInstanceRef.current = map;
     }
 
     const map = mapInstanceRef.current;
+    const layerGroup = markersLayerGroupRef.current;
+    layerGroup.clearLayers();
 
-    // Limpia capas anteriores (marcadores y polilíneas)
-    map.eachLayer((layer) => {
-      if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-        map.removeLayer(layer);
-      }
-    });
+    const allPositions = [];
 
-    const latLngs = [];
-
-    // Pintar pines circulares numerados idénticos al diseño
+    // A) Pines de Paradas seleccionadas en la Ruta (Pines con número de orden y color)
+    const routeCoordinates = [];
     stops.forEach((stop) => {
       if (stop.latitude != null && stop.longitude != null) {
         const pos = [Number(stop.latitude), Number(stop.longitude)];
-        latLngs.push(pos);
+        routeCoordinates.push(pos);
+        allPositions.push(pos);
 
         const pinColor = STATUS_COLORS[stop.status] || "#ea580c";
 
-        const pinIcon = L.divIcon({
+        const numberedIcon = L.divIcon({
           className: styles.markerHtmlWrapper,
           html: `
             <div class="${styles.roundPin}" style="background-color: ${pinColor}">
@@ -322,32 +352,78 @@ export default function RoutesPage() {
           popupAnchor: [0, -14],
         });
 
-        const marker = L.marker(pos, { icon: pinIcon }).addTo(map);
-
+        const marker = L.marker(pos, { icon: numberedIcon }).addTo(layerGroup);
         marker.bindPopup(`
           <div style="font-family: inherit; font-size: 13px;">
-            <strong style="color: #0b2545;">#${stop.visitOrder} - ${stop.commercialName}</strong>
+            <strong style="color: #0b2545;">Parada #${stop.visitOrder}: ${stop.commercialName}</strong>
             <div style="color: #64748b; font-size: 12px; margin-top: 3px;">📍 ${stop.address}</div>
-            <div style="font-size: 11px; color: #ea580c; font-weight: 600; margin-top: 2px;">Hora: ${stop.suggestedTime}</div>
+            <div style="font-size: 12px; color: #ea580c; font-weight: 700; margin-top: 3px;">Hora: ${stop.suggestedTime}</div>
           </div>
         `);
       }
     });
 
-    // Trazar polilínea oscura en bucle como en el diseño
-    if (latLngs.length >= 2) {
-      // Si hay al menos 3 puntos, cerramos el bucle al primer punto para formar el recorrido completo
-      const loopPoints = latLngs.length >= 3 ? [...latLngs, latLngs[0]] : latLngs;
-
-      L.polyline(loopPoints, {
+    // B) Polilínea conectando las paradas de la ruta en orden
+    if (routeCoordinates.length >= 2) {
+      L.polyline(routeCoordinates, {
         color: "#1e293b",
         weight: 3.5,
         opacity: 0.9,
         lineJoin: "round",
-      }).addTo(map);
+      }).addTo(layerGroup);
+    }
 
-      const bounds = L.latLngBounds(latLngs);
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    // C) Pines de Clientes Creados Disponibles (que aún no han sido seleccionados)
+    // Permite que el usuario vea dónde están ubicados en el mapa y hacer clic para agregarlos
+    availableClients.forEach((client) => {
+      if (client.latitude != null && client.longitude != null) {
+        const pos = [Number(client.latitude), Number(client.longitude)];
+        allPositions.push(pos);
+
+        const unselectedIcon = L.divIcon({
+          className: styles.markerHtmlWrapper,
+          html: `
+            <div class="${styles.availablePin}">
+              <span>•</span>
+            </div>
+          `,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+          popupAnchor: [0, -10],
+        });
+
+        const marker = L.marker(pos, { icon: unselectedIcon }).addTo(layerGroup);
+        marker.bindPopup(`
+          <div style="font-family: inherit; font-size: 13px; max-width: 200px;">
+            <strong style="color: #0b2545;">${client.commercialName}</strong>
+            <div style="color: #64748b; font-size: 11.5px; margin-top: 2px;">📍 ${client.address || "Sin dirección"}</div>
+            <div style="color: #2563eb; font-size: 11px; margin-top: 1px;">${client.municipality || "Barranquilla"}</div>
+            <div style="margin-top: 8px; text-align: right;">
+              <button 
+                id="popup-add-${client.id}" 
+                style="background: #ea580c; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer;">
+                + Agregar a ruta
+              </button>
+            </div>
+          </div>
+        `);
+
+        marker.on("popupopen", () => {
+          const btn = document.getElementById(`popup-add-${client.id}`);
+          if (btn) {
+            btn.onclick = () => {
+              handleAddStop(client);
+              map.closePopup();
+            };
+          }
+        });
+      }
+    });
+
+    // Ajustar zoom y encuadre
+    if (allPositions.length > 0) {
+      const bounds = L.latLngBounds(allPositions);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
 
     const timer = setTimeout(() => {
@@ -355,117 +431,20 @@ export default function RoutesPage() {
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [stops]);
+  }, [stops, availableClients, handleAddStop]);
 
-  // Manejo de cambios en el formulario de información general
-  const handleGeneralChange = (e) => {
-    const { name, value } = e.target;
-    setGeneralInfo((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Agregar cliente al recorrido
-  const handleAddStop = (client) => {
-    // Evitar duplicar cliente en la misma ruta
-    if (stops.some((s) => s.clientId === client.id)) {
-      alert("Este cliente ya se encuentra en el recorrido de la ruta.");
-      return;
-    }
-
-    const nextOrder = stops.length + 1;
-    const hour = 8 + Math.floor((nextOrder * 45) / 60);
-    const min = (nextOrder * 45) % 60;
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour > 12 ? hour - 12 : hour;
-    const timeFormatted = `${String(displayHour).padStart(2, "0")}:${String(min).padStart(2, "0")} ${period}`;
-
-    const newStop = {
-      clientId: client.id,
-      visitOrder: nextOrder,
-      commercialName: client.commercialName,
-      clientType: client.clientType || "Comercial",
-      address: client.address || "Dirección registrada",
-      municipality: client.municipality || "Barranquilla",
-      suggestedTime: timeFormatted,
-      latitude: client.latitude != null ? Number(client.latitude) : 10.998 + (nextOrder * 0.01),
-      longitude: client.longitude != null ? Number(client.longitude) : -74.815 - (nextOrder * 0.01),
-      status: nextOrder % 3 === 0 ? "PENDING" : "VISITED",
-    };
-
-    setStops((prev) => [...prev, newStop]);
-  };
-
-  // Eliminar cliente del recorrido
-  const handleRemoveStop = (clientId) => {
-    setStops((prev) => {
-      const filtered = prev.filter((s) => s.clientId !== clientId);
-      // Reindexar secuencia de orden
-      return filtered.map((s, idx) => ({ ...s, visitOrder: idx + 1 }));
-    });
-  };
-
-  // Limpiar toda la ruta
-  const handleClearRoute = () => {
-    if (window.confirm("¿Deseas remover todos los clientes y reiniciar el trazado de la ruta?")) {
-      setStops([]);
-    }
-  };
-
-  // Optimizar ruta (simulación de ordenamiento inteligente de paradas)
-  const handleOptimizeRoute = () => {
-    setFeedback({ type: "info", message: "Optimizando secuencia de visitas por proximidad geográfica..." });
-    setTimeout(() => {
-      setStops((prev) => {
-        // Ordena por latitud para simular algoritmo TSP
-        const sorted = [...prev].sort((a, b) => (b.latitude || 0) - (a.latitude || 0));
-        return sorted.map((s, idx) => ({ ...s, visitOrder: idx + 1 }));
-      });
-      setFeedback({ type: "success", message: "Ruta optimizada con éxito." });
-      setTimeout(() => setFeedback(null), 3000);
-    }, 600);
-  };
-
-  // Guardar Borrador
+  // Guardar Borrador (HU-17 y HU-18)
   const handleSaveDraft = async () => {
+    if (!generalInfo.name.trim()) {
+      alert("Por favor ingresa un nombre para la ruta.");
+      return;
+    }
     setSaving(true);
     setFeedback(null);
     try {
-      await routesService.createRouteDraft({
-        name: generalInfo.name,
-        description: generalInfo.description,
-        zoneId: Number(generalInfo.zoneId) || 1,
-        dayOfWeek: generalInfo.dayOfWeek,
-        frequency: generalInfo.frequency,
-        startTime: `${generalInfo.startTime}:00`,
-        endTime: `${generalInfo.endTime}:00`,
-        startDate: new Date().toISOString().split("T")[0],
-      });
-      setFeedback({ type: "success", message: "Borrador de ruta guardado exitosamente." });
-    } catch (err) {
-      setFeedback({ type: "error", message: err.message || "Error al guardar el borrador." });
-    } finally {
-      setSaving(false);
-      setTimeout(() => setFeedback(null), 4000);
-    }
-  };
-
-  // Guardar y Asignar
-  const handleSaveAndAssign = async () => {
-    if (!selectedAdvisorId) {
-      alert("Por favor selecciona un asesor comercial antes de guardar y asignar.");
-      return;
-    }
-    if (stops.length === 0) {
-      alert("Debes agregar al menos una parada al recorrido de la ruta.");
-      return;
-    }
-
-    setSaving(true);
-    setFeedback(null);
-    try {
-      // 1. Crea borrador
       const created = await routesService.createRouteDraft({
-        name: generalInfo.name,
-        description: generalInfo.description,
+        name: generalInfo.name.trim(),
+        description: generalInfo.description.trim() || undefined,
         zoneId: Number(generalInfo.zoneId) || 1,
         dayOfWeek: generalInfo.dayOfWeek,
         frequency: generalInfo.frequency,
@@ -474,58 +453,98 @@ export default function RoutesPage() {
         startDate: new Date().toISOString().split("T")[0],
       });
 
-      // 2. Agrega paradas
+      // Agregar las paradas seleccionadas
       for (const stop of stops) {
-        await routesService.addRouteStop(created.id, {
-          clientId: stop.clientId,
-          suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "09:00:00",
-          estimatedDurationMinutes: 30,
-        }).catch(() => null);
+        await routesService
+          .addRouteStop(created.id, {
+            clientId: stop.clientId,
+            suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
+            estimatedDurationMinutes: 30,
+          })
+          .catch(() => null);
       }
-
-      // 3. Asigna asesor y genera visitas
-      await routesService.assignRouteAdvisor(created.id, Number(selectedAdvisorId));
 
       setFeedback({
         type: "success",
-        message: "¡Ruta asignada exitosamente! Se han programado las visitas en la agenda del asesor.",
+        message: `Borrador "${created.name}" guardado exitosamente con ${stops.length} paradas.`,
       });
     } catch (err) {
-      setFeedback({ type: "error", message: err.message || "Error al asignar la ruta." });
+      setFeedback({
+        type: "error",
+        message: err.message || "Error al guardar el borrador de la ruta.",
+      });
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 5000);
     }
   };
 
-  // Clientes filtrados para el panel de búsqueda
-  const filteredClients = useMemo(() => {
-    const existingIds = new Set(stops.map((s) => s.clientId));
-    return availableClients.filter((c) => {
-      if (existingIds.has(c.id)) return false;
-      if (clientSearch.trim()) {
-        const query = clientSearch.toLowerCase();
-        const matchesName = c.commercialName.toLowerCase().includes(query);
-        const matchesCode = String(c.id).includes(query);
-        if (!matchesName && !matchesCode) return false;
-      }
-      if (filterType && c.clientType !== filterType) return false;
-      if (filterMuni && c.municipality !== filterMuni) return false;
-      return true;
-    });
-  }, [availableClients, stops, clientSearch, filterType, filterMuni]);
+  // Guardar y Asignar (HU-20)
+  const handleSaveAndAssign = async () => {
+    if (!generalInfo.name.trim()) {
+      alert("Por favor ingresa un nombre para la ruta.");
+      return;
+    }
+    if (!selectedAdvisorId) {
+      alert("Por favor selecciona un asesor comercial para la asignación.");
+      return;
+    }
+    if (stops.length === 0) {
+      alert("Debes agregar al menos un cliente como parada antes de asignar la ruta.");
+      return;
+    }
 
-  // Métricas calculadas
-  const totalStopsCount = stops.length;
-  const totalDistanceAprox = (totalStopsCount * 9.8).toFixed(1); // aprox. km
-  const totalMinutes = totalStopsCount * 70; // 30 min visita + 40 min traslado
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  const timeFormatted = `${hours}h ${minutes}m`;
+    setSaving(true);
+    setFeedback(null);
+    try {
+      // 1. Crear borrador
+      const created = await routesService.createRouteDraft({
+        name: generalInfo.name.trim(),
+        description: generalInfo.description.trim() || undefined,
+        zoneId: Number(generalInfo.zoneId) || 1,
+        dayOfWeek: generalInfo.dayOfWeek,
+        frequency: generalInfo.frequency,
+        startTime: `${generalInfo.startTime}:00`,
+        endTime: `${generalInfo.endTime}:00`,
+        startDate: new Date().toISOString().split("T")[0],
+      });
+
+      // 2. Agregar paradas secuenciales
+      for (const stop of stops) {
+        await routesService
+          .addRouteStop(created.id, {
+            clientId: stop.clientId,
+            suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
+            estimatedDurationMinutes: 30,
+          })
+          .catch(() => null);
+      }
+
+      // 3. Asignar al asesor (dispara creación de visitas en la agenda)
+      await routesService.assignRouteAdvisor(created.id, Number(selectedAdvisorId));
+
+      setFeedback({
+        type: "success",
+        message: "¡Ruta asignada exitosamente! Se han programado las visitas en la agenda del asesor comercial.",
+      });
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message: err.message || "Error al guardar y asignar la ruta.",
+      });
+    } finally {
+      setSaving(false);
+      setTimeout(() => setFeedback(null), 5000);
+    }
+  };
+
+  const hours = Math.floor(metrics.durationMinutes / 60);
+  const mins = metrics.durationMinutes % 60;
+  const timeFormatted = `${hours}h ${mins}m`;
 
   return (
     <div className={styles.workbenchContainer}>
-      {/* 1. Barra de Pasos Superior (Stepper) y Acciones */}
+      {/* 1. Stepper Superior y Acciones Principales */}
       <section className={styles.stepperHeader} aria-label="Progreso de creación de ruta">
         <div className={styles.stepperTabs}>
           {/* Paso 1 */}
@@ -565,7 +584,7 @@ export default function RoutesPage() {
           </div>
         </div>
 
-        {/* Botones de acción principales */}
+        {/* Acciones */}
         <div className={styles.headerActions}>
           <button type="button" className={styles.cancelBtn} onClick={() => window.history.back()}>
             Cancelar
@@ -602,60 +621,61 @@ export default function RoutesPage() {
           }`}
           role="alert"
         >
-          {feedback.type === "success" ? (
-            <CheckCircle2 size={16} />
-          ) : (
-            <AlertCircle size={16} />
-          )}
+          {feedback.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
           <span>{feedback.message}</span>
         </div>
       )}
 
       {/* 2. Cuadrícula Principal (3 Columnas Workbench) */}
       <div className={styles.mainGrid}>
-        {/* Columna Izquierda: Información general de la ruta */}
+        {/* Columna Izquierda: Información general */}
         <div className={styles.colGeneralInfo}>
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>Información general de la ruta</h2>
 
             <div className={styles.formContent}>
-              {/* Nombre de la ruta */}
               <div className={styles.formGroup}>
                 <label htmlFor="routeName">Nombre de la ruta *</label>
                 <input
                   id="routeName"
-                  name="name"
                   type="text"
                   value={generalInfo.name}
-                  onChange={handleGeneralChange}
+                  onChange={(e) => setGeneralInfo((prev) => ({ ...prev, name: e.target.value }))}
                   placeholder="Ej: RUT-ATL-001"
                 />
               </div>
 
-              {/* Territorio / Zona */}
               <div className={styles.formGroup}>
                 <label htmlFor="routeZone">Territorio / Zona *</label>
                 <select
                   id="routeZone"
-                  name="zoneId"
                   value={generalInfo.zoneId}
-                  onChange={handleGeneralChange}
+                  onChange={(e) => setGeneralInfo((prev) => ({ ...prev, zoneId: e.target.value }))}
                 >
-                  <option value="1">Atlántico Este</option>
-                  <option value="2">Barranquilla Norte</option>
-                  <option value="3">Barranquilla Sur</option>
-                  <option value="4">Soledad</option>
+                  {zones.length > 0 ? (
+                    zones.map((z) => (
+                      <option key={z.id} value={String(z.id)}>
+                        {z.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="1">Barranquilla Norte</option>
+                      <option value="2">Barranquilla Sur</option>
+                      <option value="3">Soledad</option>
+                      <option value="4">Malambo</option>
+                      <option value="5">Galapa</option>
+                    </>
+                  )}
                 </select>
               </div>
 
-              {/* Día de ejecución */}
               <div className={styles.formGroup}>
                 <label htmlFor="routeDay">Día de ejecución *</label>
                 <select
                   id="routeDay"
-                  name="dayOfWeek"
                   value={generalInfo.dayOfWeek}
-                  onChange={handleGeneralChange}
+                  onChange={(e) => setGeneralInfo((prev) => ({ ...prev, dayOfWeek: e.target.value }))}
                 >
                   <option value="MONDAY">Lunes</option>
                   <option value="TUESDAY">Martes</option>
@@ -666,14 +686,12 @@ export default function RoutesPage() {
                 </select>
               </div>
 
-              {/* Frecuencia */}
               <div className={styles.formGroup}>
                 <label htmlFor="routeFreq">Frecuencia *</label>
                 <select
                   id="routeFreq"
-                  name="frequency"
                   value={generalInfo.frequency}
-                  onChange={handleGeneralChange}
+                  onChange={(e) => setGeneralInfo((prev) => ({ ...prev, frequency: e.target.value }))}
                 >
                   <option value="WEEKLY">Semanal</option>
                   <option value="BIWEEKLY">Quincenal</option>
@@ -681,17 +699,15 @@ export default function RoutesPage() {
                 </select>
               </div>
 
-              {/* Horario Inicio y Fin */}
               <div className={styles.timeRow}>
                 <div className={styles.formGroup}>
                   <label htmlFor="startTime">Inicio sugerido *</label>
                   <div className={styles.timeInputWrapper}>
                     <input
                       id="startTime"
-                      name="startTime"
                       type="time"
                       value={generalInfo.startTime}
-                      onChange={handleGeneralChange}
+                      onChange={(e) => setGeneralInfo((prev) => ({ ...prev, startTime: e.target.value }))}
                     />
                     <Clock size={14} className={styles.inputIcon} />
                   </div>
@@ -702,40 +718,34 @@ export default function RoutesPage() {
                   <div className={styles.timeInputWrapper}>
                     <input
                       id="endTime"
-                      name="endTime"
                       type="time"
                       value={generalInfo.endTime}
-                      onChange={handleGeneralChange}
+                      onChange={(e) => setGeneralInfo((prev) => ({ ...prev, endTime: e.target.value }))}
                     />
                     <Clock size={14} className={styles.inputIcon} />
                   </div>
                 </div>
               </div>
 
-              {/* Descripción */}
               <div className={styles.formGroup}>
                 <label htmlFor="routeDescription">Descripción</label>
                 <textarea
                   id="routeDescription"
-                  name="description"
                   rows={3}
                   maxLength={200}
                   value={generalInfo.description}
-                  onChange={handleGeneralChange}
+                  onChange={(e) => setGeneralInfo((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Descripción del recorrido comercial..."
                 />
-                <span className={styles.charCount}>
-                  {generalInfo.description.length}/200
-                </span>
+                <span className={styles.charCount}>{generalInfo.description.length}/200</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Columna Central: Mapa interactivo de recorrido */}
+        {/* Columna Central: Mapa */}
         <div className={styles.colMap}>
           <div className={styles.mapCard}>
-            {/* Controles flotantes sobre el mapa */}
             <div className={styles.mapOverlayTop}>
               <button
                 type="button"
@@ -764,20 +774,16 @@ export default function RoutesPage() {
                 >
                   <Maximize2 size={15} />
                 </button>
-                <button
-                  type="button"
-                  className={styles.mapControlBtn}
-                  title="Capas del mapa"
-                >
+                <button type="button" className={styles.mapControlBtn} title="Capas del mapa">
                   <Layers size={15} />
                 </button>
               </div>
             </div>
 
-            {/* Contenedor Leaflet */}
+            {/* Contenedor del Mapa */}
             <div ref={mapContainerRef} className={styles.leafletMapContainer} />
 
-            {/* Pastilla flotante inferior con Leyenda de Estados */}
+            {/* Leyenda de Estados */}
             <div className={styles.mapLegendBar}>
               <div className={styles.legendItem}>
                 <span className={`${styles.legendDot} ${styles.dotVisited}`} />
@@ -802,7 +808,6 @@ export default function RoutesPage() {
             </div>
           </div>
 
-          {/* Botones inferiores del mapa */}
           <div className={styles.mapBottomBar}>
             <button
               type="button"
@@ -819,80 +824,80 @@ export default function RoutesPage() {
               type="button"
               className={styles.clearRouteBtn}
               onClick={handleClearRoute}
+              disabled={stops.length === 0}
             >
               Limpiar ruta
             </button>
           </div>
         </div>
 
-        {/* Columna Derecha: Buscar clientes y Asignar asesor */}
+        {/* Columna Derecha: Clientes Creados y Asignación */}
         <div className={styles.colRight}>
-          {/* Card 1: Buscar y agregar clientes */}
+          {/* Tarjeta 1: Clientes disponibles */}
           <div className={styles.card}>
-            <h2 className={styles.cardTitle}>Buscar y agregar clientes</h2>
+            <div className={styles.cardHeaderRow}>
+              <h2 className={styles.cardTitle}>Buscar y agregar clientes</h2>
+              <span className={styles.clientCountBadge}>
+                {availableClients.length} disponibles
+              </span>
+            </div>
 
-            {/* Buscador */}
             <div className={styles.searchBox}>
               <input
                 id="clientSearchInput"
                 type="text"
-                placeholder="Buscar cliente por nombre o código..."
+                placeholder="Buscar por nombre, NIT o municipio..."
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
               />
               <Search size={15} className={styles.searchIcon} />
             </div>
 
-            {/* Filtros selectores */}
             <div className={styles.searchFiltersRow}>
               <div className={styles.filterMiniGroup}>
-                <label>Tipo de cliente</label>
-                <select
-                  value={filterType}
-                  onChange={(e) => setFilterType(e.target.value)}
-                >
+                <label>Tipo cliente</label>
+                <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                   <option value="">Todos</option>
-                  <option value="Industrial">Industrial</option>
-                  <option value="Distribuidor">Distribuidor</option>
-                  <option value="Retail">Retail</option>
-                  <option value="Comercial">Comercial</option>
+                  {Object.entries(clientTypes).map(([id, name]) => (
+                    <option key={id} value={name}>
+                      {name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className={styles.filterMiniGroup}>
                 <label>Municipio</label>
-                <select
-                  value={filterMuni}
-                  onChange={(e) => setFilterMuni(e.target.value)}
-                >
+                <select value={filterMuni} onChange={(e) => setFilterMuni(e.target.value)}>
                   <option value="">Todos</option>
-                  <option value="Barranquilla">Barranquilla</option>
-                  <option value="Soledad">Soledad</option>
-                  <option value="Malambo">Malambo</option>
-                  <option value="Galapa">Galapa</option>
+                  {availableMunicipalities.map((muni) => (
+                    <option key={muni} value={muni}>
+                      {muni}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            {/* Lista de clientes disponibles */}
+            {/* Listado de clientes reales */}
             <div className={styles.clientCardsList}>
-              {filteredClients.length === 0 ? (
-                <p className={styles.noClientsAvailable}>
-                  No se encontraron clientes disponibles para los filtros aplicados.
-                </p>
+              {loadingClients ? (
+                <p className={styles.noClientsAvailable}>Cargando clientes registrados...</p>
+              ) : availableClients.length === 0 ? (
+                <div className={styles.emptyClientsNotice}>
+                  <p>
+                    {allDbClients.length === 0
+                      ? "Aún no hay clientes registrados en el sistema. Puedes registrarlos en el módulo de Clientes."
+                      : "No hay más clientes disponibles para los filtros seleccionados o ya están en la ruta."}
+                  </p>
+                </div>
               ) : (
-                filteredClients.slice(0, 5).map((client) => {
-                  const IconComp = client.icon || Building2;
+                availableClients.map((client) => {
+                  const typeLabel = clientTypes[client.clientTypeId] || "Comercial";
                   return (
                     <div key={client.id} className={styles.clientMiniCard}>
-                      <div
-                        className={styles.clientMiniIcon}
-                        style={{
-                          backgroundColor: client.iconBg || "#fff7ed",
-                          color: client.iconColor || "#ea580c",
-                        }}
-                      >
-                        <IconComp size={16} />
+                      <div className={styles.clientMiniIcon}>
+                        <Building2 size={16} />
                       </div>
 
                       <div className={styles.clientMiniInfo}>
@@ -900,15 +905,20 @@ export default function RoutesPage() {
                           {client.commercialName}
                         </strong>
                         <span className={styles.clientMiniMeta}>
-                          {client.clientType} &bull; {client.municipality}
+                          {typeLabel} &bull; {client.municipality || "Barranquilla"}
                         </span>
+                        {client.latitude != null && (
+                          <span className={styles.clientMiniCoords}>
+                            <MapPin size={10} /> {client.latitude.toFixed(4)}, {client.longitude.toFixed(4)}
+                          </span>
+                        )}
                       </div>
 
                       <button
                         type="button"
                         className={styles.clientAddBtn}
                         onClick={() => handleAddStop(client)}
-                        title="Agregar cliente al itinerario"
+                        title="Agregar cliente a la ruta"
                       >
                         <Plus size={16} />
                       </button>
@@ -918,20 +928,22 @@ export default function RoutesPage() {
               )}
             </div>
 
-            <button
-              type="button"
-              className={styles.seeMoreBtn}
-              onClick={() => {
-                setClientSearch("");
-                setFilterType("");
-                setFilterMuni("");
-              }}
-            >
-              Ver más clientes
-            </button>
+            {(clientSearch || filterType || filterMuni) && (
+              <button
+                type="button"
+                className={styles.seeMoreBtn}
+                onClick={() => {
+                  setClientSearch("");
+                  setFilterType("");
+                  setFilterMuni("");
+                }}
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
 
-          {/* Card 2: Asignar ruta a asesor */}
+          {/* Tarjeta 2: Asignación y KPIs */}
           <div className={styles.card}>
             <h2 className={styles.cardTitle}>Asignar ruta a asesor</h2>
 
@@ -944,14 +956,13 @@ export default function RoutesPage() {
               >
                 <option value="">Seleccionar asesor</option>
                 {advisors.map((adv) => (
-                  <option key={adv.id || adv.userId} value={String(adv.id || adv.userId)}>
-                    {adv.name || `Asesor #${adv.id || adv.userId}`}
+                  <option key={adv.id || adv.userId} value={String(adv.userId || adv.id)}>
+                    {adv.name || `Asesor #${adv.userId || adv.id}`}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Resumen de la ruta (KPIs) */}
             <div className={styles.routeSummaryBox}>
               <div className={styles.summaryHeader}>
                 <FileSpreadsheet size={15} className={styles.summaryDocIcon} />
@@ -960,11 +971,11 @@ export default function RoutesPage() {
 
               <div className={styles.kpiRow}>
                 <div className={styles.kpiCol}>
-                  <strong className={styles.kpiValue}>{totalStopsCount}</strong>
+                  <strong className={styles.kpiValue}>{stops.length}</strong>
                   <span className={styles.kpiLabel}>Paradas</span>
                 </div>
                 <div className={styles.kpiCol}>
-                  <strong className={styles.kpiValue}>{totalDistanceAprox} km</strong>
+                  <strong className={styles.kpiValue}>{metrics.distanceKm.toFixed(1)} km</strong>
                   <span className={styles.kpiLabel}>Distancia aprox.</span>
                 </div>
                 <div className={styles.kpiCol}>
@@ -974,7 +985,6 @@ export default function RoutesPage() {
               </div>
             </div>
 
-            {/* Nota informativa */}
             <div className={styles.assignmentNotice}>
               <Info size={16} className={styles.infoIcon} />
               <p>
@@ -985,14 +995,14 @@ export default function RoutesPage() {
         </div>
       </div>
 
-      {/* 3. Fila Inferior: Tabla de Secuencia de Paradas (Idéntica al diseño) */}
+      {/* 3. Tabla Inferior de Secuencia de Paradas */}
       <section className={styles.stopsTableSection}>
         <div className={styles.stopsTableCard}>
           <div className={styles.responsiveTableWrapper}>
             <table className={styles.workbenchTable}>
               <thead>
                 <tr>
-                  <th style={{ width: "36px" }} />
+                  <th style={{ width: "40px" }} />
                   <th style={{ width: "70px" }}>Orden</th>
                   <th>Cliente</th>
                   <th>Tipo cliente</th>
@@ -1006,20 +1016,25 @@ export default function RoutesPage() {
                 {stops.length === 0 ? (
                   <tr>
                     <td colSpan={8} className={styles.emptyTableTd}>
-                      No hay paradas en el recorrido. Agrega clientes desde el panel derecho.
+                      <div className={styles.emptyTableMessage}>
+                        <Store size={28} />
+                        <p>Aún no has agregado paradas a esta ruta.</p>
+                        <span>
+                          Haz clic en el botón <strong>+</strong> de cualquier cliente del panel derecho
+                          o en los puntos del mapa para agregarlo al recorrido.
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ) : (
-                  stops.map((stop) => {
+                  stops.map((stop, index) => {
                     const pinColor = STATUS_COLORS[stop.status] || "#ea580c";
                     return (
                       <tr key={stop.clientId}>
-                        {/* Drag Handle */}
                         <td className={styles.tdDrag}>
                           <GripVertical size={16} className={styles.dragIcon} />
                         </td>
 
-                        {/* Orden con pastilla circular de color */}
                         <td>
                           <div
                             className={styles.orderBadgeCircle}
@@ -1029,39 +1044,52 @@ export default function RoutesPage() {
                           </div>
                         </td>
 
-                        {/* Cliente */}
                         <td className={styles.tdClientName}>{stop.commercialName}</td>
-
-                        {/* Tipo de cliente */}
                         <td className={styles.tdClientType}>{stop.clientType}</td>
-
-                        {/* Dirección */}
                         <td className={styles.tdAddress}>{stop.address}</td>
-
-                        {/* Municipio */}
                         <td className={styles.tdMunicipality}>{stop.municipality}</td>
-
-                        {/* Hora sugerida */}
                         <td className={styles.tdTime}>{stop.suggestedTime}</td>
 
-                        {/* Acciones */}
                         <td className={styles.tdActions}>
+                          <button
+                            type="button"
+                            className={styles.actionIconButton}
+                            title="Subir de posición"
+                            disabled={index === 0}
+                            onClick={() => handleMoveUp(index)}
+                          >
+                            <ArrowUp size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.actionIconButton}
+                            title="Bajar de posición"
+                            disabled={index === stops.length - 1}
+                            onClick={() => handleMoveDown(index)}
+                          >
+                            <ArrowDown size={13} />
+                          </button>
                           <button
                             type="button"
                             className={styles.actionIconButton}
                             title="Modificar horario"
                             onClick={() => {
-                              const newTime = prompt("Ingresa la nueva hora sugerida:", stop.suggestedTime);
-                              if (newTime) {
+                              const newTime = prompt(
+                                "Ingresa la nueva hora sugerida (ej: 09:30 AM):",
+                                stop.suggestedTime
+                              );
+                              if (newTime?.trim()) {
                                 setStops((prev) =>
                                   prev.map((s) =>
-                                    s.clientId === stop.clientId ? { ...s, suggestedTime: newTime } : s
+                                    s.clientId === stop.clientId
+                                      ? { ...s, suggestedTime: newTime.trim() }
+                                      : s
                                   )
                                 );
                               }
                             }}
                           >
-                            <Edit2 size={14} />
+                            <Edit2 size={13} />
                           </button>
                           <button
                             type="button"
@@ -1069,7 +1097,7 @@ export default function RoutesPage() {
                             title="Remover de la ruta"
                             onClick={() => handleRemoveStop(stop.clientId)}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} />
                           </button>
                         </td>
                       </tr>

@@ -1,28 +1,32 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import {
   Menu,
   Search,
-  Bell,
   ChevronDown,
   Calendar,
+  Bell,
   LogOut,
   User,
-  Shield,
+  MapPin,
 } from "lucide-react";
-import { useAuth, ROLES } from "@/features/auth";
 import Logo from "@/shared/components/Logo/Logo";
+import { useAuth, ROLES } from "@/features/auth";
 import styles from "./Header.module.css";
 
 function getRoleLabel(role, zoneId) {
-  if (role === ROLES.ADMIN) return "Administrador";
-  if (role === ROLES.DIRECTOR_REGIONAL) {
-    return zoneId ? `Director Regional (Zona ${zoneId})` : "Director Regional";
+  switch (role) {
+    case ROLES.ADMIN:
+      return "Administrador";
+    case ROLES.DIRECTOR_REGIONAL:
+      return zoneId ? `Director Reg. (Zona ${zoneId})` : "Director Regional";
+    case ROLES.ASESOR:
+      return "Asesor Comercial";
+    default:
+      return role || "Usuario";
   }
-  return "Asesor Comercial";
 }
 
-function getInitials(name) {
+function getInitials(name = "") {
   if (!name) return "U";
   const parts = name.trim().split(" ");
   if (parts.length >= 2) {
@@ -33,12 +37,9 @@ function getInitials(name) {
 
 export default function Header({ onToggleMenu = () => {} }) {
   const { user, role, zoneId, logout } = useAuth();
-  const location = useLocation();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef(null);
-
-  const isRoutesPage = location.pathname.startsWith("/rutas");
 
   // Cerrar dropdown de usuario si se hace clic afuera
   useEffect(() => {
@@ -51,12 +52,12 @@ export default function Header({ onToggleMenu = () => {} }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const displayName = user?.name || user?.email?.split("@")[0] || "Richard Lopez";
+  const displayName = user?.name || user?.email?.split("@")[0] || "Juan Pérez";
   const roleLabel = getRoleLabel(role, zoneId);
 
   return (
     <header className={styles.header}>
-      {/* Zona Izquierda: Logo + Botón Hamburguesa + Título de página o Buscador Global */}
+      {/* Zona Izquierda: Logo + Botón Hamburguesa + Buscador Global */}
       <div className={styles.left}>
         <div className={styles.logoBlock}>
           <Logo size="sm" color="dark" />
@@ -72,29 +73,25 @@ export default function Header({ onToggleMenu = () => {} }) {
           <Menu size={20} />
         </button>
 
-        {isRoutesPage ? (
-          <h1 className={styles.pageHeaderTitle}>Creación de rutas</h1>
-        ) : (
-          <div className={styles.searchBar}>
-            <Search size={16} className={styles.searchIcon} />
-            <input
-              type="text"
-              className={styles.searchInput}
-              placeholder="Buscar clientes, contactos, rutas..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        )}
+        <div className={styles.searchBar}>
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="text"
+            className={styles.searchInput}
+            placeholder="Buscar clientes, contactos, rutas..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Zona Derecha: Filtros rápidos + Notificaciones + Perfil de Usuario */}
       <div className={styles.right}>
         {/* Selector de Territorio */}
         <div className={styles.quickFilter}>
-          <span className={styles.filterLabel}>Regional</span>
+          <span className={styles.filterLabel}>Territorio</span>
           <div className={styles.filterValue}>
-            <span>Atlántico</span>
+            <span>{zoneId ? `Zona ${zoneId}` : "NORTE"}</span>
             <ChevronDown size={14} />
           </div>
         </div>
@@ -103,9 +100,8 @@ export default function Header({ onToggleMenu = () => {} }) {
         <div className={styles.quickFilter}>
           <span className={styles.filterLabel}>Semana</span>
           <div className={styles.filterValue}>
+            <span>19 - 25 Oct 2026</span>
             <Calendar size={14} className={styles.calendarIcon} />
-            <span>20 - 26 May 2024</span>
-            <ChevronDown size={14} />
           </div>
         </div>
 
@@ -113,79 +109,63 @@ export default function Header({ onToggleMenu = () => {} }) {
         <button
           type="button"
           className={styles.notifBtn}
-          aria-label="8 notificaciones nuevas"
+          aria-label="6 notificaciones nuevas"
           title="Notificaciones"
         >
           <Bell size={19} />
-          <span className={styles.notifBadge}>8</span>
+          <span className={styles.notifBadge}>6</span>
         </button>
 
         {/* Perfil de Usuario con Menú Desplegable */}
         <div className={styles.userProfileWrapper} ref={dropdownRef}>
           <button
             type="button"
-            className={styles.profileBtn}
-            onClick={() => setUserMenuOpen((prev) => !prev)}
+            className={styles.userProfileBtn}
+            onClick={() => setUserMenuOpen((v) => !v)}
             aria-expanded={userMenuOpen}
-            aria-label="Menú de usuario"
           >
-            <div className={styles.avatar}>{getInitials(displayName)}</div>
-            <div className={styles.userInfo}>
+            <div className={styles.avatar}>
+              {getInitials(displayName)}
+            </div>
+            <div className={styles.userText}>
               <span className={styles.userName}>{displayName}</span>
               <span className={styles.userRole}>{roleLabel}</span>
             </div>
-            <ChevronDown
-              size={15}
-              className={`${styles.chevron} ${userMenuOpen ? styles.chevronOpen : ""}`}
-            />
+            <ChevronDown size={15} className={`${styles.chevron} ${userMenuOpen ? styles.chevronRotated : ""}`} />
           </button>
 
-          {/* Dropdown Menu */}
+          {/* Menú Dropdown al hacer clic en el perfil */}
           {userMenuOpen && (
             <div className={styles.dropdownMenu}>
               <div className={styles.dropdownHeader}>
-                <strong className={styles.dropdownName}>{displayName}</strong>
-                <span className={styles.dropdownEmail}>
-                  {user?.email || "usuario@comercial360.co"}
-                </span>
-                <span className={styles.roleBadge}>{roleLabel}</span>
+                <strong>{displayName}</strong>
+                <span>{user?.email || "correo@empresa.com"}</span>
               </div>
-
-              <div className={styles.dropdownDivider} />
-
+              <hr className={styles.divider} />
               <button
                 type="button"
                 className={styles.dropdownItem}
-                onClick={() => {
-                  setUserMenuOpen(false);
-                }}
+                onClick={() => setUserMenuOpen(false)}
               >
-                <User size={15} />
+                <User size={16} />
                 <span>Mi Perfil</span>
               </button>
-
+              {zoneId && (
+                <div className={styles.dropdownItem}>
+                  <MapPin size={16} />
+                  <span>Territorio: Zona {zoneId}</span>
+                </div>
+              )}
+              <hr className={styles.divider} />
               <button
                 type="button"
-                className={styles.dropdownItem}
-                onClick={() => {
-                  setUserMenuOpen(false);
-                }}
-              >
-                <Shield size={15} />
-                <span>Permisos y Zona</span>
-              </button>
-
-              <div className={styles.dropdownDivider} />
-
-              <button
-                type="button"
-                className={`${styles.dropdownItem} ${styles.logoutItem}`}
+                className={`${styles.dropdownItem} ${styles.dropdownItemLogout}`}
                 onClick={() => {
                   setUserMenuOpen(false);
                   logout();
                 }}
               >
-                <LogOut size={15} />
+                <LogOut size={16} />
                 <span>Cerrar sesión</span>
               </button>
             </div>

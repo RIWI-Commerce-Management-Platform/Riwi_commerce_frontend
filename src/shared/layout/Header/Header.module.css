@@ -49,14 +49,6 @@
   border-color: #cbd5e1;
 }
 
-.pageHeaderTitle {
-  font-size: 18px;
-  font-weight: 800;
-  color: #0b2545;
-  margin: 0 0 0 8px;
-  white-space: nowrap;
-}
-
 .searchBar {
   position: relative;
   flex: 1;

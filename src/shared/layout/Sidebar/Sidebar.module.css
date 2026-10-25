@@ -7,7 +7,9 @@
   flex-shrink: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   padding: 16px 14px 20px;
-  min-height: calc(100vh - 60px);
+  height: calc(100vh - 68px);
+  position: sticky;
+  top: 68px;
   user-select: none;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow-y: auto;

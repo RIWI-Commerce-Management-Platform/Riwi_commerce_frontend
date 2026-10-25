@@ -2,14 +2,18 @@
 *::before,
 *::after { box-sizing: border-box; }
 
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root {
+  min-height: 100%;
+  margin: 0;
+}
 
 body {
   font-family: var(--font);
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* la página nunca hace scroll: todo cabe en la pantalla */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 button, input { font: inherit; }
