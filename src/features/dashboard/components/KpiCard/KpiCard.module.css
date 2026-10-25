@@ -1,0 +1,10 @@
+.card {
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  padding: 18px 20px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  border-top: 4px solid var(--orange);
+  box-shadow: 0 6px 24px rgba(16, 40, 80, 0.05);
+}
+.label { margin: 0; font-size: 14px; font-weight: 600; color: var(--muted); }
+.value { margin: 0; font-size: clamp(24px, 3.2vw, 32px); font-weight: 800; color: var(--navy); overflow-wrap: anywhere; }
+.hint { margin: 0; font-size: 12px; line-height: 1.4; color: var(--muted); }

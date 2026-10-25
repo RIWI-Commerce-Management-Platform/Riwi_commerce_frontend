@@ -36,6 +36,17 @@ la lógica va en `hooks/` y las llamadas HTTP en `services/`. Para agregar un m�
 Imports con alias `@` → `src/`.
 
 
+## Dashboard de KPI (HU-35)
+`features/dashboard/` en `#/dashboard`: seis tarjetas (visitas programadas y realizadas, efectividad,
+valor cotizado, pedidos cerrados y facturación) filtradas por semana y territorio, desde
+`GET /dashboard/kpis` del backend. Requiere sesión de admin o director regional.
+
+```bash
+# backend en http://localhost:3015; Vite reenvía /api a esa URL (API_PROXY_TARGET para cambiarla)
+VITE_API_URL=/api npm run dev   # abre http://localhost:5173/#/dashboard
+npm test
+```
+
 ## Pendiente
 - Conectar `authService.login` con tu API (`VITE_API_URL`).
 - Integrar MSAL en `loginWithMicrosoft`.
