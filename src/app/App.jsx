@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, LoginPage, useAuth, ROLES } from "@/features/auth";
 import { DashboardPage } from "@/features/dashboard";
 import { ClientsPage } from "@/features/clients";
+import { RoutesPage } from "@/features/routes";
 import AppLayout from "@/shared/layout/AppLayout";
 import ProtectedRoute from "@/shared/components/ProtectedRoute/ProtectedRoute";
 import PlaceholderPage from "@/shared/components/PlaceholderPage/PlaceholderPage";
@@ -48,24 +49,12 @@ export default function App() {
             {/* Módulo de Clientes (HU-11 a HU-13) */}
             <Route path="clientes" element={<ClientsPage />} />
 
-            {/* Planeación de Rutas (ADMIN y DIRECTOR_REGIONAL) */}
+            {/* Planeación de Rutas Comerciales (HU-17 a HU-22) */}
             <Route
               path="rutas"
               element={
-                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL]}>
-                  <PlaceholderPage
-                    title="Planeación de Rutas Comerciales"
-                    description="Asistente guiado de 3 pasos (Wizard): creación de borrador, selección y reordenamiento de paradas con cálculo de trayecto (Haversine) y asignación a asesores."
-                    moduleCode="Épica E3 (HU-17 a HU-22)"
-                    targetEndpoints={[
-                      "POST /routes (Paso 1: Borrador de ruta)",
-                      "POST /routes/:id/stops (Paso 2: Agregar parada)",
-                      "PATCH /routes/:id/stops/reorder (Reordenar paradas)",
-                      "POST /routes/metrics/calculate (Cálculo de km y minutos)",
-                      "POST /routes/:id/assign (Paso 3: Asignar a asesor y crear visitas)",
-                      "GET /routes (Listado paginado supervisado)",
-                    ]}
-                  />
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR]}>
+                  <RoutesPage />
                 </ProtectedRoute>
               }
             />

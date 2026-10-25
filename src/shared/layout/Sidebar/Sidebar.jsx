@@ -28,7 +28,7 @@ const MENU_ITEMS = [
     to: "/rutas",
     label: "Planeación de rutas",
     icon: GitBranch,
-    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL],
+    roles: [ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR],
   },
   {
     to: "/visitas",
