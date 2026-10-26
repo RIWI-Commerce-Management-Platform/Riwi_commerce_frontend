@@ -4,6 +4,9 @@ import { DashboardPage } from "@/features/dashboard";
 import { ClientsPage } from "@/features/clients";
 import { RoutesPage, AssignedRoutesPage } from "@/features/routes";
 import { RegisterVisitPage, AgendaPage } from "@/features/visits";
+import { VisitMapPage } from "@/features/visit-map";
+import { QuotesPage, OrdersPage } from "@/features/quotes";
+import { ReportsPage } from "@/features/reports";
 import AppLayout from "@/shared/layout/AppLayout";
 import ProtectedRoute from "@/shared/components/ProtectedRoute/ProtectedRoute";
 import PlaceholderPage from "@/shared/components/PlaceholderPage/PlaceholderPage";
@@ -101,38 +104,16 @@ export default function App() {
               path="mapa"
               element={
                 <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL]}>
-                  <PlaceholderPage
-                    title="Mapa Interactivo de Visitas y Cobertura"
-                    description="Visualización geoespacial de clientes y estado de visitas en tiempo real sobre OpenStreetMap y Leaflet por territorio."
-                    moduleCode="Épica E6 & E7 (HU-36 y HU-37)"
-                    targetEndpoints={[
-                      "GET /visit-map (Pines georreferenciados con estado)",
-                      "GET /visit-map/advisor/:advisorId (Itinerario del asesor)",
-                    ]}
-                  />
+                  <VisitMapPage />
                 </ProtectedRoute>
               }
             />
 
-            {/* Cotizaciones y Pedidos */}
-            <Route
-              path="cotizaciones"
-              element={
-                <PlaceholderPage
-                  title="Gestión Comercial de Cotizaciones y Pedidos"
-                  description="Creación de cotizaciones con productos y cálculo automático, adjuntos en S3, aprobación de cotizaciones y conversión a pedidos oficiales."
-                  moduleCode="Épica E5 (HU-30 a HU-34)"
-                  targetEndpoints={[
-                    "POST /quotes (Crear cotización COT-0001)",
-                    "GET /quotes (Listado con filtros y estados)",
-                    "PATCH /quotes/:id/status (Aprobar o rechazar con bitácora)",
-                    "POST /quotes/:id/document (Adjuntar PDF/soporte en S3)",
-                    "POST /quotes/:id/convert-to-order (Convertir a PED-0001)",
-                    "GET /orders (Listado de pedidos generados)",
-                  ]}
-                />
-              }
-            />
+            {/* Cotizaciones (HU-30 a HU-32) */}
+            <Route path="cotizaciones" element={<QuotesPage />} />
+
+            {/* Pedidos (HU-33 y HU-34) */}
+            <Route path="pedidos" element={<OrdersPage />} />
 
             {/* Gestión de Asesores (Solo ADMIN) */}
             <Route
@@ -179,17 +160,7 @@ export default function App() {
               path="reportes"
               element={
                 <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL]}>
-                  <PlaceholderPage
-                    title="Centro de Exportación de Reportes CSV"
-                    description="Descarga en un clic de la información comercial consolidada en formato CSV estándar compatible con Excel y BI."
-                    moduleCode="Épica E6 & E7 (HU-38)"
-                    targetEndpoints={[
-                      "GET /reports/visits/csv (Reporte de visitas)",
-                      "GET /reports/clients/csv (Reporte de clientes)",
-                      "GET /reports/quotes/csv (Reporte de cotizaciones)",
-                      "GET /reports/orders/csv (Reporte de pedidos)",
-                    ]}
-                  />
+                  <ReportsPage />
                 </ProtectedRoute>
               }
             />

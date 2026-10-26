@@ -554,6 +554,18 @@ export default function RoutesPage() {
     return () => clearTimeout(timer);
   }, [stops, availableClients, handleAddStop]);
 
+  // 7b. Destruir la instancia del mapa al desmontar la página (evita el error
+  // de Leaflet "Map container is already initialized" al volver a esta vista).
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markersLayerGroupRef.current = null;
+      }
+    };
+  }, []);
+
   // 8. Guardar Borrador / Actualizar Borrador
   const handleSaveDraft = async () => {
     if (!generalInfo.name.trim()) {
