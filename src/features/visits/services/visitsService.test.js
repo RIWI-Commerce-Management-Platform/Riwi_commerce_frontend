@@ -85,4 +85,30 @@ describe("visitsService", () => {
     expect(result.progressPercentage).toBe(78);
     expect(fetchMock.mock.calls[0][0]).toContain("/api/indicators/weekly-goal?date=2026-10-27");
   });
+
+  it("consulta el historial cronológico de un cliente con GET /clients/:id/history", async () => {
+    const mockHistory = {
+      data: [{ id: 1, action: "visit.result_registered", entityType: "visit", entityId: "12" }],
+      total: 1,
+    };
+    const fetchMock = respond(200, mockHistory);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await visitsService.getClientHistory(2, { page: 1, limit: 10 });
+    expect(result.total).toBe(1);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/clients/2/history?page=1&limit=10");
+  });
+
+  it("consulta las cotizaciones de un cliente con GET /quotes?clientId=:id", async () => {
+    const mockQuotes = {
+      data: [{ id: 10, quoteNumber: "COT-1241", total: 12600000 }],
+      total: 1,
+    };
+    const fetchMock = respond(200, mockQuotes);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await visitsService.getClientQuotes(2, { limit: 5 });
+    expect(result.data.length).toBe(1);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/quotes?clientId=2&limit=5");
+  });
 });

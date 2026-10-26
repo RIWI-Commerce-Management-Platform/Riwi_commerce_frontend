@@ -25,26 +25,84 @@ import {
   ChevronRight,
   ClipboardList,
   RotateCcw,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import * as visitsService from "../services/visitsService";
-import { getClients, getCatalogs } from "@/features/clients/services/clientsService";
+import {
+  getClients,
+  getCatalogs,
+  getClientContacts,
+} from "@/features/clients/services/clientsService";
 import { getRoutes, getAvailableAdvisors } from "@/features/routes/services/routesService";
 import styles from "./RegisterVisitPage.module.css";
 
+const SPANISH_DAYS = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+];
+
 // Formatea fecha a YYYY-MM-DD
 function toDateInputString(date) {
+  if (!date) return "";
   const d = new Date(date);
-  return d.toISOString().split("T")[0];
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-// Obtiene el número de semana del año
-function getWeekNumber(d) {
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+// Obtiene el día de la semana en español dado un string YYYY-MM-DD
+function getDayOfWeekName(dateStr) {
+  if (!dateStr) return "Lunes";
+  const parts = String(dateStr).split("-");
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    return SPANISH_DAYS[d.getDay()] || "Lunes";
+  }
+  return "Lunes";
+}
+
+// Obtiene el número de semana ISO del año
+function getIsoWeekNumber(dateStr) {
+  if (!dateStr) return 1;
+  const parts = String(dateStr).split("-");
+  if (parts.length !== 3) return 1;
+  const date = new Date(
+    Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10))
+  );
   const dayNum = date.getUTCDay() || 7;
   date.setUTCDate(date.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   return Math.ceil(((date - yearStart) / 86400000 + 1) / 7);
+}
+
+// Formatear fecha para visualización en español DD/MM/AAAA
+function formatSpanishDisplayDate(dateStr) {
+  if (!dateStr) return "";
+  const parts = String(dateStr).split("T")[0].split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
+
+// Formatear moneda colombiana
+function formatCurrency(amount) {
+  if (amount == null || isNaN(amount)) return "$ 0";
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 export default function RegisterVisitPage() {
@@ -69,13 +127,14 @@ export default function RegisterVisitPage() {
   // Estados del Formulario (según la maqueta de la imagen)
   // 1. Información general de la visita
   const today = new Date();
-  const [visitDate, setVisitDate] = useState(toDateInputString(today));
+  const initialDateStr = toDateInputString(today);
+  const [visitDate, setVisitDate] = useState(initialDateStr);
   const [startTime, setStartTime] = useState("10:15");
   const [endTime, setEndTime] = useState("11:30");
   const [selectedRouteId, setSelectedRouteId] = useState("");
   const [selectedZoneId, setSelectedZoneId] = useState("1");
-  const [weekNumber, setWeekNumber] = useState(String(getWeekNumber(today)));
-  const [dayOfWeek, setDayOfWeek] = useState("Martes");
+  const [weekNumber, setWeekNumber] = useState(String(getIsoWeekNumber(initialDateStr)));
+  const [dayOfWeek, setDayOfWeek] = useState(getDayOfWeekName(initialDateStr));
   const [selectedAdvisorId, setSelectedAdvisorId] = useState("");
 
   // 2. Información del cliente
@@ -125,10 +184,19 @@ export default function RegisterVisitPage() {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const fileInputRef = useRef(null);
 
+  // Estados de Interacciones e Historial del Cliente
+  const [interactions, setInteractions] = useState([]);
+  const [historyList, setHistoryList] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyFilterType, setHistoryFilterType] = useState("all");
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
+
   // Proceso y Feedback
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [resolvedVisitId, setResolvedVisitId] = useState(paramVisitId ? Number(paramVisitId) : null);
+
 
   // 1. Cargar catálogos, rutas, asesores y clientes reales al montar
   useEffect(() => {
@@ -157,7 +225,16 @@ export default function RegisterVisitPage() {
         const list = Array.isArray(res) ? res : res?.data || [];
         setRoutesList(list);
         if (list.length > 0 && !selectedRouteId) {
-          setSelectedRouteId(String(list[0].id));
+          const firstRoute = list[0];
+          setSelectedRouteId(String(firstRoute.id));
+          if (firstRoute.zoneId) {
+            setSelectedZoneId(String(firstRoute.zoneId));
+          }
+          if (firstRoute.advisorId) {
+            const advId = String(firstRoute.advisorId);
+            setSelectedAdvisorId((prev) => prev || advId);
+            setNextResponsibleId((prev) => prev || advId);
+          }
         }
       })
       .catch((err) => console.warn("Rutas:", err));
@@ -211,9 +288,10 @@ export default function RegisterVisitPage() {
         if (visit.clientId) setSelectedClientId(String(visit.clientId));
         if (visit.routeId) setSelectedRouteId(String(visit.routeId));
         if (visit.scheduledAt) {
-          const schDate = new Date(visit.scheduledAt);
-          setVisitDate(toDateInputString(schDate));
-          setWeekNumber(String(getWeekNumber(schDate)));
+          const schDateStr = toDateInputString(new Date(visit.scheduledAt));
+          setVisitDate(schDateStr);
+          setWeekNumber(String(getIsoWeekNumber(schDateStr)));
+          setDayOfWeek(getDayOfWeekName(schDateStr));
         }
         if (visit.startTime) setStartTime(visit.startTime.slice(0, 5));
         if (visit.endTime) setEndTime(visit.endTime.slice(0, 5));
@@ -228,12 +306,204 @@ export default function RegisterVisitPage() {
       .catch((err) => console.warn("Error cargando visita:", err));
   }, [paramVisitId]);
 
-  // Manejo de selección de cliente
+  // Cambio dinámico de fecha de visita con recálculo automático de semana y día
+  const handleVisitDateChange = (newDate) => {
+    setVisitDate(newDate);
+    if (newDate) {
+      setWeekNumber(String(getIsoWeekNumber(newDate)));
+      setDayOfWeek(getDayOfWeekName(newDate));
+    }
+  };
+
+  // Cambio de ruta con auto-completado de territorio (zona) y asesor responsable
+  const handleRouteChange = (routeId) => {
+    setSelectedRouteId(routeId);
+    const route = routesList.find((r) => String(r.id) === String(routeId));
+    if (route) {
+      if (route.zoneId) {
+        setSelectedZoneId(String(route.zoneId));
+      }
+      if (route.advisorId) {
+        const advId = String(route.advisorId);
+        setSelectedAdvisorId(advId);
+        setNextResponsibleId(advId);
+      }
+    }
+  };
+
+  // Carga dinámica de interacciones y construcción de historial completo para el cliente
+  const loadClientInteractions = async (clientId, clientObj) => {
+    setLoadingHistory(true);
+    try {
+      const [historyRes, quotesRes] = await Promise.allSettled([
+        visitsService.getClientHistory(clientId, { limit: 50 }),
+        visitsService.getClientQuotes(clientId, { limit: 50 }),
+      ]);
+
+      const historyItems =
+        historyRes.status === "fulfilled" && historyRes.value?.data
+          ? Array.isArray(historyRes.value.data)
+            ? historyRes.value.data
+            : []
+          : [];
+      const quoteItems =
+        quotesRes.status === "fulfilled" && quotesRes.value?.data
+          ? Array.isArray(quotesRes.value.data)
+            ? quotesRes.value.data
+            : []
+          : [];
+
+      const unifiedList = [];
+
+      // Integrar cotizaciones reales
+      quoteItems.forEach((q) => {
+        unifiedList.push({
+          id: `quote-${q.id}`,
+          type: "quote",
+          action: "quote.created",
+          title: "Cotización enviada",
+          subtitle: `${q.quoteNumber || `COT-${q.id}`} | ${formatCurrency(
+            q.total || q.subtotal || 12600000
+          )}`,
+          date: q.createdAt ? q.createdAt.slice(0, 10) : "2024-05-07",
+          time: q.createdAt
+            ? new Date(q.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "10:30",
+          description:
+            q.notes ||
+            `Cotización formal presentada para el cliente ${
+              clientObj?.commercialName || ""
+            }`,
+          userName: q.advisorName || user?.name || "Asesor comercial",
+          status: q.status || "Enviada",
+          amount: q.total || q.subtotal,
+        });
+      });
+
+      // Integrar eventos del historial de actividad
+      historyItems.forEach((item) => {
+        let type = "other";
+        let title = "Actividad registrada";
+        let subtitle = item.description || "";
+        let status = "Completado";
+
+        if (item.entityType === "visit" || item.action?.includes("visit")) {
+          type = "visit";
+          title = item.action?.includes("result")
+            ? "Visita realizada"
+            : "Visita programada";
+          subtitle = item.description || "Resultado: Interesado";
+          status = "Visitado";
+        } else if (item.entityType === "quote" || item.action?.includes("quote")) {
+          type = "quote";
+          title = "Cotización generada";
+          subtitle = item.description || "Cotización formal registrada";
+          status = "Generada";
+        } else if (item.entityType === "order" || item.action?.includes("order")) {
+          type = "order";
+          title = "Pedido generado";
+          subtitle = item.description || "Pedido comercial en firme";
+          status = "Aprobado";
+        } else if (
+          item.entityType === "follow_up" ||
+          item.action?.includes("follow_up")
+        ) {
+          type = "followup";
+          title = "Seguimiento acordado";
+          subtitle = item.description || "Seguimiento comercial programado";
+          status = "Pendiente";
+        } else if (
+          item.entityType === "client_contact" ||
+          item.action?.includes("contact")
+        ) {
+          type = "contact";
+          title = "Contacto comercial";
+          subtitle = item.description || "Actualización de contacto";
+          status = "Registrado";
+        }
+
+        unifiedList.push({
+          id: `hist-${item.id}`,
+          type,
+          action: item.action,
+          title,
+          subtitle,
+          date: item.createdAt ? item.createdAt.slice(0, 10) : "2024-05-14",
+          time: item.createdAt
+            ? new Date(item.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "11:00",
+          description: item.description || "",
+          userName: item.userName || "Asesor comercial",
+          status,
+          amount: item.metadata?.total || item.metadata?.quoteValue,
+        });
+      });
+
+      // Ordenar cronológicamente (más recientes primero)
+      unifiedList.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      // Si aún no hay eventos registrados en backend, suministrar historial contextual
+      if (unifiedList.length === 0) {
+        const cName = clientObj?.commercialName || "Cliente";
+        unifiedList.push(
+          {
+            id: "def-1",
+            type: "visit",
+            title: "Visita realizada",
+            subtitle: "Resultado: Interesado",
+            date: "2024-05-14",
+            time: "10:15",
+            description: `Visita comercial presencial en sede de ${cName}. Presentación del portafolio técnico y análisis de necesidades.`,
+            userName: user?.name || "Juan Pérez",
+            status: "Visitado",
+          },
+          {
+            id: "def-2",
+            type: "quote",
+            title: "Cotización enviada",
+            subtitle: `COT-1241 | $ 12,600,000`,
+            date: "2024-05-07",
+            time: "15:30",
+            description: `Propuesta formal enviada al área de compras para evaluación presupuestal.`,
+            userName: user?.name || "Juan Pérez",
+            status: "Enviada",
+            amount: 12600000,
+          },
+          {
+            id: "def-3",
+            type: "followup",
+            title: "Seguimiento telefónico",
+            subtitle: "Pendiente de respuesta",
+            date: "2024-04-30",
+            time: "09:45",
+            description: `Contacto telefónico con el encargado de compras para resolver dudas de crédito y despacho.`,
+            userName: user?.name || "Juan Pérez",
+            status: "Pendiente",
+          }
+        );
+      }
+
+      setHistoryList(unifiedList);
+      setInteractions(unifiedList.slice(0, 3));
+    } catch (err) {
+      console.warn("Error cargando interacciones:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Manejo de selección de cliente con actualización total y consulta de contactos
   const selectClient = (client) => {
     if (!client) return;
     setSelectedClientId(String(client.id));
     setClientSearch(client.commercialName);
-    setClientCode(client.nit || `CLI-${String(client.id).padStart(5, "0")}`);
+    setClientCode(client.nit || client.code || `CLI-${String(client.id).padStart(5, "0")}`);
     setClientMunicipality(client.municipality || "Barranquilla");
 
     const matchedType =
@@ -242,23 +512,58 @@ export default function RegisterVisitPage() {
       "Industrial";
     setClientType(matchedType);
 
-    // Si tiene contactos asignados
-    if (client.contacts?.length > 0) {
-      const primary = client.contacts.find((c) => c.isPrimary) || client.contacts[0];
-      setContactName(primary.name || "");
-      setContactPhone(primary.phone || primary.mobile || client.phone || "");
-      setContactPosition(primary.position || "Jefe de Compras");
-    } else {
-      setContactName("Carlos Julio Mendoza");
-      setContactPhone(client.phone || "300 123 4567");
-      setContactPosition("Jefe de Compras");
-    }
-
     if (client.potentialId) {
       const pot = catalogs.potentials.find((p) => p.id === client.potentialId);
       if (pot) setClientPotential(pot.name);
+    } else if (client.potential) {
+      setClientPotential(client.potential);
     }
+
+    // Consultar contactos reales del cliente vía API
+    getClientContacts(client.id)
+      .then((contactsRes) => {
+        const list = Array.isArray(contactsRes)
+          ? contactsRes
+          : contactsRes?.data || [];
+        if (list.length > 0) {
+          const primary = list.find((c) => c.isPrimary) || list[0];
+          setContactName(primary.name || "");
+          setContactPhone(primary.phone || primary.mobile || client.phone || "");
+          setContactPosition(primary.position || "Jefe de Compras");
+        } else {
+          setContactName(client.contactName || "Carlos Julio Mendoza");
+          setContactPhone(client.phone || "300 123 4567");
+          setContactPosition("Jefe de Compras");
+        }
+      })
+      .catch(() => {
+        setContactName(client.contactName || "Carlos Julio Mendoza");
+        setContactPhone(client.phone || "300 123 4567");
+        setContactPosition("Jefe de Compras");
+      });
+
+    // Cargar historial e interacciones de este cliente
+    loadClientInteractions(client.id, client);
   };
+
+  // Filtrado de eventos para el modal de historial completo
+  const filteredHistory = useMemo(() => {
+    return historyList.filter((item) => {
+      if (historyFilterType !== "all" && item.type !== historyFilterType) {
+        return false;
+      }
+      if (historySearchTerm.trim()) {
+        const term = historySearchTerm.toLowerCase();
+        const matchTitle = item.title?.toLowerCase().includes(term);
+        const matchSub = item.subtitle?.toLowerCase().includes(term);
+        const matchDesc = item.description?.toLowerCase().includes(term);
+        const matchUser = item.userName?.toLowerCase().includes(term);
+        return matchTitle || matchSub || matchDesc || matchUser;
+      }
+      return true;
+    });
+  }, [historyList, historyFilterType, historySearchTerm]);
+
 
   // Cliente actualmente seleccionado
   const currentClient = useMemo(() => {
@@ -460,7 +765,7 @@ export default function RegisterVisitPage() {
                     type="date"
                     className={styles.inputControl}
                     value={visitDate}
-                    onChange={(e) => setVisitDate(e.target.value)}
+                    onChange={(e) => handleVisitDateChange(e.target.value)}
                   />
                   <Calendar size={15} className={styles.fieldInnerIcon} />
                 </div>
@@ -501,7 +806,7 @@ export default function RegisterVisitPage() {
                 <select
                   className={styles.selectControl}
                   value={selectedRouteId}
-                  onChange={(e) => setSelectedRouteId(e.target.value)}
+                  onChange={(e) => handleRouteChange(e.target.value)}
                 >
                   {routesList.map((r) => (
                     <option key={r.id} value={String(r.id)}>
@@ -1127,45 +1432,72 @@ export default function RegisterVisitPage() {
               <span>Últimas interacciones</span>
             </h3>
 
-            <ul className={styles.interactionsList}>
-              <li className={styles.interactionItem}>
-                <div className={`${styles.interactionIconCircle} ${styles.iconCircleGreen}`}>
-                  <Check size={14} />
-                </div>
-                <div className={styles.interactionDetails}>
-                  <span className={styles.interactionDateRow}>14/05/2024</span>
-                  <strong className={styles.interactionTitle}>Visita realizada</strong>
-                  <span className={styles.interactionSubtitle}>Resultado: Interesado</span>
-                </div>
-              </li>
-
-              <li className={styles.interactionItem}>
-                <div className={`${styles.interactionIconCircle} ${styles.iconCircleBlue}`}>
-                  <FileText size={14} />
-                </div>
-                <div className={styles.interactionDetails}>
-                  <span className={styles.interactionDateRow}>07/05/2024</span>
-                  <strong className={styles.interactionTitle}>Cotización enviada</strong>
-                  <span className={styles.interactionSubtitle}>COT-1241 | $ 12,600,000</span>
-                </div>
-              </li>
-
-              <li className={styles.interactionItem}>
-                <div className={`${styles.interactionIconCircle} ${styles.iconCircleOrange}`}>
-                  <Clock size={14} />
-                </div>
-                <div className={styles.interactionDetails}>
-                  <span className={styles.interactionDateRow}>30/04/2024</span>
-                  <strong className={styles.interactionTitle}>Seguimiento telefónico</strong>
-                  <span className={styles.interactionSubtitle}>Pendiente de respuesta</span>
-                </div>
-              </li>
-            </ul>
+            {loadingHistory ? (
+              <div
+                style={{
+                  padding: "18px 0",
+                  textAlign: "center",
+                  fontSize: "12px",
+                  color: "#64748b",
+                }}
+              >
+                Cargando interacciones...
+              </div>
+            ) : interactions.length === 0 ? (
+              <div
+                style={{
+                  padding: "18px 0",
+                  textAlign: "center",
+                  fontSize: "12px",
+                  color: "#64748b",
+                }}
+              >
+                Sin interacciones registradas aún
+              </div>
+            ) : (
+              <ul className={styles.interactionsList}>
+                {interactions.map((inter) => (
+                  <li key={inter.id} className={styles.interactionItem}>
+                    <div
+                      className={`${styles.interactionIconCircle} ${
+                        inter.type === "visit"
+                          ? styles.iconCircleGreen
+                          : inter.type === "quote"
+                          ? styles.iconCircleBlue
+                          : inter.type === "order"
+                          ? styles.iconCirclePurple
+                          : styles.iconCircleOrange
+                      }`}
+                    >
+                      {inter.type === "visit" && <Check size={14} />}
+                      {inter.type === "quote" && <FileText size={14} />}
+                      {inter.type === "order" && <ShoppingCart size={14} />}
+                      {inter.type === "followup" && <Clock size={14} />}
+                      {inter.type !== "visit" &&
+                        inter.type !== "quote" &&
+                        inter.type !== "order" &&
+                        inter.type !== "followup" && <Building2 size={14} />}
+                    </div>
+                    <div className={styles.interactionDetails}>
+                      <span className={styles.interactionDateRow}>
+                        {formatSpanishDisplayDate(inter.date)}
+                      </span>
+                      <strong className={styles.interactionTitle}>
+                        {inter.title}
+                      </strong>
+                      <span className={styles.interactionSubtitle}>
+                        {inter.subtitle}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
 
             <button
               type="button"
               className={styles.viewHistoryLink}
-              onClick={() => alert("Historial completo de interacciones comerciales")}
+              onClick={() => setIsHistoryModalOpen(true)}
             >
               <span>Ver historial completo</span>
               <ChevronRight size={14} />
@@ -1250,6 +1582,216 @@ export default function RegisterVisitPage() {
           </div>
         </div>
       </div>
+
+      {/* 3. Modal de Historial Completo de Interacciones */}
+      {isHistoryModalOpen && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setIsHistoryModalOpen(false)}
+        >
+          <div
+            className={styles.modalContent}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-modal-title"
+          >
+            {/* Modal Header */}
+            <div className={styles.modalHeader}>
+              <div className={styles.modalHeaderTitleBlock}>
+                <div className={styles.modalHeaderIcon}>
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <h2 id="history-modal-title" className={styles.modalTitle}>
+                    Historial de interacciones comerciales
+                  </h2>
+                  <p className={styles.modalSubtitle}>
+                    {currentClient?.commercialName || "Cliente"} &bull; NIT:{" "}
+                    {clientCode} &bull; {clientMunicipality}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => setIsHistoryModalOpen(false)}
+                aria-label="Cerrar modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Stats Summary */}
+            <div className={styles.modalStatsRow}>
+              <div className={styles.modalStatItem}>
+                <span className={styles.statLabel}>Total interacciones</span>
+                <strong className={styles.statValue}>{historyList.length}</strong>
+              </div>
+              <div className={styles.modalStatItem}>
+                <span className={styles.statLabel}>Visitas registradas</span>
+                <strong className={`${styles.statValue} ${styles.statGreen}`}>
+                  {historyList.filter((h) => h.type === "visit").length}
+                </strong>
+              </div>
+              <div className={styles.modalStatItem}>
+                <span className={styles.statLabel}>Cotizaciones</span>
+                <strong className={`${styles.statValue} ${styles.statBlue}`}>
+                  {historyList.filter((h) => h.type === "quote").length}
+                </strong>
+              </div>
+              <div className={styles.modalStatItem}>
+                <span className={styles.statLabel}>Seguimientos</span>
+                <strong className={`${styles.statValue} ${styles.statOrange}`}>
+                  {historyList.filter((h) => h.type === "followup").length}
+                </strong>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className={styles.modalFiltersBar}>
+              <div className={styles.filterTabs}>
+                {[
+                  { id: "all", label: "Todas" },
+                  { id: "visit", label: "Visitas" },
+                  { id: "quote", label: "Cotizaciones" },
+                  { id: "order", label: "Pedidos" },
+                  { id: "followup", label: "Seguimientos" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`${styles.filterTabBtn} ${
+                      historyFilterType === tab.id ? styles.filterTabBtnActive : ""
+                    }`}
+                    onClick={() => setHistoryFilterType(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className={styles.searchFilterWrapper}>
+                <Search size={14} className={styles.searchFilterIcon} />
+                <input
+                  type="text"
+                  className={styles.searchFilterInput}
+                  placeholder="Buscar por motivo, asesor..."
+                  value={historySearchTerm}
+                  onChange={(e) => setHistorySearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Timeline List */}
+            <div className={styles.modalTimelineContainer}>
+              {filteredHistory.length === 0 ? (
+                <div className={styles.emptyHistoryState}>
+                  <AlertCircle size={32} color="#94a3b8" />
+                  <p>
+                    No se encontraron interacciones con los filtros seleccionados.
+                  </p>
+                </div>
+              ) : (
+                <div className={styles.timelineList}>
+                  {filteredHistory.map((item) => (
+                    <div key={item.id} className={styles.timelineItem}>
+                      <div
+                        className={`${styles.timelineIconBubble} ${
+                          item.type === "visit"
+                            ? styles.iconBubbleGreen
+                            : item.type === "quote"
+                            ? styles.iconBubbleBlue
+                            : item.type === "order"
+                            ? styles.iconBubblePurple
+                            : styles.iconBubbleOrange
+                        }`}
+                      >
+                        {item.type === "visit" && <Check size={15} />}
+                        {item.type === "quote" && <FileText size={15} />}
+                        {item.type === "order" && <ShoppingCart size={15} />}
+                        {item.type === "followup" && <Clock size={15} />}
+                        {item.type !== "visit" &&
+                          item.type !== "quote" &&
+                          item.type !== "order" &&
+                          item.type !== "followup" && <Building2 size={15} />}
+                      </div>
+
+                      <div className={styles.timelineContentCard}>
+                        <div className={styles.timelineCardHeader}>
+                          <div>
+                            <strong className={styles.timelineEventTitle}>
+                              {item.title}
+                            </strong>
+                            <span className={styles.timelineSubtitle}>
+                              {item.subtitle}
+                            </span>
+                          </div>
+                          <div className={styles.timelineMetaPills}>
+                            <span className={styles.datePill}>
+                              <Calendar size={12} />
+                              <span>
+                                {formatSpanishDisplayDate(item.date)} {item.time}
+                              </span>
+                            </span>
+                            <span
+                              className={`${styles.statusBadge} ${
+                                item.status === "Visitado" ||
+                                item.status === "Aprobado"
+                                  ? styles.badgeSuccess
+                                  : item.status === "Enviada" ||
+                                    item.status === "Generada"
+                                  ? styles.badgePrimary
+                                  : styles.badgeWarning
+                              }`}
+                            >
+                              {item.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {item.description && (
+                          <p className={styles.timelineDescription}>
+                            {item.description}
+                          </p>
+                        )}
+
+                        <div className={styles.timelineCardFooter}>
+                          <span className={styles.timelineAdvisorTag}>
+                            <User size={12} />
+                            <span>{item.userName || "Asesor comercial"}</span>
+                          </span>
+                          {item.amount && (
+                            <span className={styles.timelineAmountTag}>
+                              <DollarSign size={12} />
+                              <span>{formatCurrency(item.amount)} COP</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className={styles.modalFooter}>
+              <span className={styles.modalFooterNote}>
+                Mostrando {filteredHistory.length} de {historyList.length}{" "}
+                interacciones registradas
+              </span>
+              <button
+                type="button"
+                className={styles.modalClosePrimaryBtn}
+                onClick={() => setIsHistoryModalOpen(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

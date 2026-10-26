@@ -146,3 +146,27 @@ export async function getWeeklyGoal(date) {
   if (date) params.date = date;
   return api.get("/indicators/weekly-goal", { params });
 }
+
+/**
+ * Consulta el historial cronológico de interacciones de un cliente (visitas, cotizaciones, pedidos, seguimientos).
+ * @param {number|string} clientId Identificador del cliente
+ * @param {Object} [options]
+ * @param {number} [options.page=1]
+ * @param {number} [options.limit=20]
+ */
+export async function getClientHistory(clientId, { page = 1, limit = 20 } = {}) {
+  const params = { page, limit };
+  return api.get(`/clients/${clientId}/history`, { params });
+}
+
+/**
+ * Consulta las cotizaciones registradas para un cliente.
+ * @param {number|string} clientId Identificador del cliente
+ * @param {Object} [options]
+ * @param {number} [options.limit=20]
+ */
+export async function getClientQuotes(clientId, { limit = 20 } = {}) {
+  const params = { clientId, limit };
+  return api.get("/quotes", { params });
+}
+

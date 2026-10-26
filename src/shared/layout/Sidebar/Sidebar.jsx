@@ -144,18 +144,7 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                       <span>Rutas asignadas</span>
                     </NavLink>
                   </li>
-                  <li>
-                    <NavLink
-                      to="/agenda"
-                      onClick={onClose}
-                      className={({ isActive }) =>
-                        `${styles.submenuItem} ${isActive ? styles.submenuItemActive : ""}`
-                      }
-                    >
-                      <span className={styles.subBullet} />
-                      <span>Agenda de asesores</span>
-                    </NavLink>
-                  </li>
+
                 </ul>
               )}
             </li>
