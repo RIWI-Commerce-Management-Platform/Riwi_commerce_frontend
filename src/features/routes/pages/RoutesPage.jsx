@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Check,
   Search,
@@ -9,7 +10,6 @@ import {
   Layers,
   Sparkles,
   Info,
-  Clock,
   Building2,
   Store,
   MapPin,
@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileSpreadsheet,
+  RotateCcw,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -36,8 +37,7 @@ const STATUS_COLORS = {
 };
 
 export default function RoutesPage() {
-  // Stepper activo: 1: Información, 2: Diseño, 3: Asignación
-  const [activeStep, setActiveStep] = useState(2);
+  const navigate = useNavigate();
 
   // Datos generales del formulario de la ruta
   const [generalInfo, setGeneralInfo] = useState({
@@ -284,6 +284,31 @@ export default function RoutesPage() {
     }
   };
 
+  // Acción Cancelar / Descartar
+  const handleCancel = () => {
+    const hasChanges =
+      stops.length > 0 || generalInfo.name !== "RUT-ATL-001" || generalInfo.description.trim() !== "";
+
+    if (hasChanges) {
+      if (window.confirm("¿Deseas descartar los cambios y reiniciar el diseño de la ruta?")) {
+        setStops([]);
+        setGeneralInfo({
+          name: "RUT-ATL-001",
+          zoneId: "1",
+          dayOfWeek: "TUESDAY",
+          frequency: "WEEKLY",
+          startTime: "08:00",
+          endTime: "17:00",
+          description: "",
+        });
+        setFeedback({ type: "info", message: "Formulario de ruta reiniciado con éxito." });
+        setTimeout(() => setFeedback(null), 3000);
+      }
+    } else {
+      navigate("/");
+    }
+  };
+
   // Optimizar ruta por proximidad
   const handleOptimizeRoute = () => {
     if (stops.length < 2) {
@@ -330,7 +355,7 @@ export default function RoutesPage() {
 
     const allPositions = [];
 
-    // A) Pines de Paradas seleccionadas en la Ruta (Pines con número de orden y color)
+    // A) Pines de Paradas seleccionadas en la Ruta
     const routeCoordinates = [];
     stops.forEach((stop) => {
       if (stop.latitude != null && stop.longitude != null) {
@@ -374,7 +399,6 @@ export default function RoutesPage() {
     }
 
     // C) Pines de Clientes Creados Disponibles (que aún no han sido seleccionados)
-    // Permite que el usuario vea dónde están ubicados en el mapa y hacer clic para agregarlos
     availableClients.forEach((client) => {
       if (client.latitude != null && client.longitude != null) {
         const pos = [Number(client.latitude), Number(client.longitude)];
@@ -544,51 +568,37 @@ export default function RoutesPage() {
 
   return (
     <div className={styles.workbenchContainer}>
-      {/* 1. Stepper Superior y Acciones Principales */}
-      <section className={styles.stepperHeader} aria-label="Progreso de creación de ruta">
-        <div className={styles.stepperTabs}>
-          {/* Paso 1 */}
-          <div
-            className={`${styles.stepTab} ${activeStep === 1 ? styles.stepTabActive : ""}`}
-            onClick={() => setActiveStep(1)}
-          >
-            <div className={styles.stepCircle}>1</div>
-            <div className={styles.stepTexts}>
-              <strong className={styles.stepTitle}>Información de la ruta</strong>
-              <span className={styles.stepDesc}>Configura los datos generales</span>
-            </div>
+      {/* 1. Barra Superior Funcional del Workbench y Acciones Principales */}
+      <section className={styles.workbenchHeader} aria-label="Control de planeación de ruta">
+        <div className={styles.headerLeftInfo}>
+          <div className={styles.headerTitleRow}>
+            <h1 className={styles.headerMainTitle}>Planeación y Diseño de Ruta</h1>
+            <span className={styles.headerStatusBadge}>Borrador en diseño</span>
           </div>
-
-          {/* Paso 2 */}
-          <div
-            className={`${styles.stepTab} ${activeStep === 2 ? styles.stepTabActive : ""}`}
-            onClick={() => setActiveStep(2)}
-          >
-            <div className={styles.stepCircleActive}>2</div>
-            <div className={styles.stepTexts}>
-              <strong className={styles.stepTitleActive}>Diseño de la ruta</strong>
-              <span className={styles.stepDesc}>Agrega clientes y ordena las paradas</span>
-            </div>
-          </div>
-
-          {/* Paso 3 */}
-          <div
-            className={`${styles.stepTab} ${activeStep === 3 ? styles.stepTabActive : ""}`}
-            onClick={() => setActiveStep(3)}
-          >
-            <div className={styles.stepCircle}>3</div>
-            <div className={styles.stepTexts}>
-              <strong className={styles.stepTitle}>Asignación</strong>
-              <span className={styles.stepDesc}>Asigna la ruta a un asesor</span>
-            </div>
+          <div className={styles.headerSubtitleRow}>
+            <span className={styles.headerContextMeta}>
+              Configura los datos del recorrido, selecciona los clientes en el mapa y asigna el asesor comercial.
+            </span>
+            {stops.length > 0 && (
+              <span className={styles.activeStopsIndicator}>
+                &bull; <strong>{stops.length}</strong> {stops.length === 1 ? "parada seleccionada" : "paradas seleccionadas"}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Acciones */}
+        {/* Acciones principales */}
         <div className={styles.headerActions}>
-          <button type="button" className={styles.cancelBtn} onClick={() => window.history.back()}>
-            Cancelar
+          <button
+            type="button"
+            className={styles.cancelBtn}
+            onClick={handleCancel}
+            title="Descartar cambios y reiniciar formulario"
+          >
+            <RotateCcw size={14} />
+            <span>Cancelar</span>
           </button>
+
           <button
             type="button"
             className={styles.draftBtn}
@@ -597,6 +607,7 @@ export default function RoutesPage() {
           >
             {saving ? "Guardando..." : "Guardar borrador"}
           </button>
+
           <button
             type="button"
             className={styles.assignPrimaryBtn}
@@ -699,6 +710,7 @@ export default function RoutesPage() {
                 </select>
               </div>
 
+              {/* Horarios con selector nativo limpio, sin íconos duplicados ni desbordamiento */}
               <div className={styles.timeRow}>
                 <div className={styles.formGroup}>
                   <label htmlFor="startTime">Inicio sugerido *</label>
@@ -709,7 +721,6 @@ export default function RoutesPage() {
                       value={generalInfo.startTime}
                       onChange={(e) => setGeneralInfo((prev) => ({ ...prev, startTime: e.target.value }))}
                     />
-                    <Clock size={14} className={styles.inputIcon} />
                   </div>
                 </div>
 
@@ -722,7 +733,6 @@ export default function RoutesPage() {
                       value={generalInfo.endTime}
                       onChange={(e) => setGeneralInfo((prev) => ({ ...prev, endTime: e.target.value }))}
                     />
-                    <Clock size={14} className={styles.inputIcon} />
                   </div>
                 </div>
               </div>

@@ -10,8 +10,8 @@
   font-family: inherit;
 }
 
-/* 1. Header / Stepper */
-.stepperHeader {
+/* 1. Barra Superior Funcional del Workbench */
+.workbenchHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,85 +19,60 @@
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 14px 24px;
+  padding: 16px 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   flex-wrap: wrap;
 }
 
-.stepperTabs {
+.headerLeftInfo {
   display: flex;
-  align-items: center;
-  gap: 32px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.stepTab {
+.headerTitleRow {
   display: flex;
   align-items: center;
   gap: 12px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  user-select: none;
+  flex-wrap: wrap;
 }
 
-.stepTab:hover {
-  background: #f8fafc;
-}
-
-.stepCircle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1.5px solid #cbd5e1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.stepCircleActive {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #ea580c;
-  color: #ffffff;
-  border: 1.5px solid #ea580c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
-}
-
-.stepTexts {
-  display: flex;
-  flex-direction: column;
-}
-
-.stepTitle {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: #334155;
-  line-height: 1.2;
-}
-
-.stepTitleActive {
-  font-size: 13.5px;
+.headerMainTitle {
+  font-size: 18px;
   font-weight: 800;
-  color: #ea580c;
-  line-height: 1.2;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin: 0;
 }
 
-.stepDesc {
+.headerStatusBadge {
   font-size: 11.5px;
-  color: #94a3b8;
-  margin-top: 2px;
+  font-weight: 700;
+  color: #ea580c;
+  background: #fff7ed;
+  border: 1px solid #ffedd5;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.headerSubtitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.headerContextMeta {
+  color: #64748b;
+}
+
+.activeStopsIndicator {
+  color: #ea580c;
+  font-weight: 600;
 }
 
 .headerActions {
@@ -107,6 +82,9 @@
 }
 
 .cancelBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 38px;
   padding: 0 16px;
   border-radius: 8px;
@@ -120,9 +98,9 @@
 }
 
 .cancelBtn:hover {
-  background: #f8fafc;
-  color: #0f172a;
-  border-color: #94a3b8;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
 }
 
 .draftBtn {
@@ -216,7 +194,7 @@
 /* 2. 3-Column Grid */
 .mainGrid {
   display: grid;
-  grid-template-columns: 310px 1fr 340px;
+  grid-template-columns: 320px 1fr 340px;
   gap: 20px;
   align-items: start;
 }
@@ -289,25 +267,23 @@
 
 .timeRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.timeRow .formGroup {
+  min-width: 0;
 }
 
 .timeInputWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
+  width: 100%;
 }
 
 .timeInputWrapper input {
-  padding-right: 32px;
-}
-
-.inputIcon {
-  position: absolute;
-  right: 10px;
-  color: #94a3b8;
-  pointer-events: none;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  box-sizing: border-box;
 }
 
 .charCount {
