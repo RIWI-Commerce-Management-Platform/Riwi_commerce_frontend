@@ -621,25 +621,43 @@ export default function RegisterVisitPage() {
         }
       }
 
-      // Si existe visita asociada en el backend:
-      if (visitId) {
-        // 1. Iniciar visita si está pendiente
-        await visitsService.startVisit(visitId).catch(() => null);
+      const resId = Number(resultId) || 1;
+      const scheduledIso = `${visitDate}T${startTime || "10:00"}:00.000Z`;
 
-        // 2. Registrar resultado comercial con tiempo y observaciones
-        const resId = Number(resultId) || 1;
+      if (!visitId) {
+        // Crear visita nueva directamente en la base de datos
+        const created = await visitsService.createVisit({
+          clientId: Number(selectedClientId),
+          advisorId: Number(selectedAdvisorId) || (user?.id ? Number(user.id) : 2),
+          routeId: selectedRouteId ? Number(selectedRouteId) : null,
+          scheduledAt: scheduledIso,
+          status: visitStatus || "VISITED",
+          objective,
+          observations: observations.trim(),
+          startTime: startTime.length === 5 ? `${startTime}:00` : startTime,
+          endTime: endTime.length === 5 ? `${endTime}:00` : endTime,
+          quoteGenerated: Boolean(hasQuote),
+          orderGenerated: Boolean(hasOrder),
+          results: [{ id: resId, observation: observations.slice(0, 100) }],
+        });
+        if (created?.id) {
+          visitId = created.id;
+        }
+      } else {
+        // Actualizar visita existente programada
+        await visitsService.startVisit(visitId).catch(() => null);
         await visitsService.registerVisitResult(visitId, {
           endTime: endTime.length === 5 ? `${endTime}:00` : endTime,
           observations: observations.trim(),
           results: [{ id: resId, observation: observations.slice(0, 100) }],
         });
-
-        // 3. Registrar outcome comercial (cotización / pedido)
         await visitsService.registerCommercialOutcome(visitId, {
           quoteGenerated: hasQuote,
           orderGenerated: hasOrder,
         });
+      }
 
+      if (visitId) {
         // 4. Programar próximo seguimiento si se indicó
         if (nextVisitDate && nextObjective.trim()) {
           const dueDateIso = `${nextVisitDate}T${nextVisitTime || "09:00"}:00.000Z`;
@@ -658,6 +676,7 @@ export default function RegisterVisitPage() {
           await visitsService.uploadVisitAttachment(visitId, file).catch(() => null);
         }
       }
+
 
       setFeedback({
         type: "success",

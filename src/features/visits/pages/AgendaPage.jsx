@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Calendar,
@@ -13,10 +13,13 @@ import {
   MapPin,
   RefreshCw,
   GitBranch,
+  User,
+  X,
 } from "lucide-react";
+import { useAuth } from "@/features/auth";
 import * as visitsService from "../services/visitsService";
 import { getClients } from "@/features/clients/services/clientsService";
-import { getRoutes } from "@/features/routes/services/routesService";
+import { getRoutes, getAvailableAdvisors } from "@/features/routes/services/routesService";
 import styles from "./AgendaPage.module.css";
 
 function toDateInputString(date) {
@@ -26,6 +29,8 @@ function toDateInputString(date) {
 
 export default function AgendaPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isDirectorOrAdmin = user?.role === "ADMIN" || user?.role === "DIRECTOR_REGIONAL";
 
   const [period, setPeriod] = useState("day");
   const [selectedDate, setSelectedDate] = useState(toDateInputString(new Date()));
@@ -33,16 +38,24 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Filtros interactivos
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [advisorFilter, setAdvisorFilter] = useState("ALL");
+  const [routeFilter, setRouteFilter] = useState("ALL");
+
   // Mapeos para enriquecer datos en la vista
   const [clientsMap, setClientsMap] = useState(new Map());
   const [routesMap, setRoutesMap] = useState(new Map());
+  const [routesList, setRoutesList] = useState([]);
+  const [advisorsList, setAdvisorsList] = useState([]);
+  const [advisorsMap, setAdvisorsMap] = useState(new Map());
 
   // Modales
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, visit: null, date: "", reason: "" });
   const [notVisitedModal, setNotVisitedModal] = useState({ open: false, visit: null, reason: "" });
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Carga clientes y rutas para nombres
+  // Carga clientes, rutas y asesores para nombres y filtros
   useEffect(() => {
     getClients({ limit: 100 })
       .then((res) => {
@@ -54,12 +67,21 @@ export default function AgendaPage() {
     getRoutes({ limit: 100 })
       .then((res) => {
         const list = Array.isArray(res) ? res : res?.data || [];
+        setRoutesList(list);
         setRoutesMap(new Map(list.map((r) => [r.id, r])));
+      })
+      .catch(() => null);
+
+    getAvailableAdvisors()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setAdvisorsList(list);
+        setAdvisorsMap(new Map(list.map((a) => [a.userId || a.id, a])));
       })
       .catch(() => null);
   }, []);
 
-  // Carga la agenda según periodo y fecha
+  // Carga la agenda según periodo, fecha y asesor
   const loadAgenda = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -67,6 +89,7 @@ export default function AgendaPage() {
       const data = await visitsService.getVisitAgenda({
         period,
         date: selectedDate,
+        advisorId: advisorFilter !== "ALL" ? advisorFilter : undefined,
       });
       setVisits(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -75,7 +98,7 @@ export default function AgendaPage() {
     } finally {
       setLoading(false);
     }
-  }, [period, selectedDate]);
+  }, [period, selectedDate, advisorFilter]);
 
   useEffect(() => {
     loadAgenda();
@@ -136,7 +159,32 @@ export default function AgendaPage() {
   const totalVisits = visits.length;
   const inProgressCount = visits.filter((v) => v.status === "IN_PROGRESS").length;
   const visitedCount = visits.filter((v) => v.status === "VISITED").length;
-  const pendingCount = visits.filter((v) => v.status === "PENDING" || v.status === "RESCHEDULE").length;
+  const pendingCount = visits.filter(
+    (v) => v.status === "PENDING" || v.status === "RESCHEDULE"
+  ).length;
+
+  // Filtrado reactivo según el KPI seleccionado o filtros secundarios
+  const displayedVisits = useMemo(() => {
+    return visits.filter((visit) => {
+      if (statusFilter === "IN_PROGRESS" && visit.status !== "IN_PROGRESS") {
+        return false;
+      }
+      if (statusFilter === "VISITED" && visit.status !== "VISITED") {
+        return false;
+      }
+      if (
+        statusFilter === "PENDING" &&
+        visit.status !== "PENDING" &&
+        visit.status !== "RESCHEDULE"
+      ) {
+        return false;
+      }
+      if (routeFilter !== "ALL" && String(visit.routeId) !== String(routeFilter)) {
+        return false;
+      }
+      return true;
+    });
+  }, [visits, statusFilter, routeFilter]);
 
   return (
     <div className={styles.container}>
@@ -196,9 +244,17 @@ export default function AgendaPage() {
         </div>
       )}
 
-      {/* 2. KPIs */}
+      {/* 2. KPIs con Filtrado Interactivo */}
       <div className={styles.kpiGrid}>
-        <div className={styles.kpiCard}>
+        <div
+          className={`${styles.kpiCard} ${
+            statusFilter === "ALL" ? styles.kpiCardActiveBlue : ""
+          }`}
+          onClick={() => setStatusFilter("ALL")}
+          title="Ver todas las visitas agendadas"
+          role="button"
+          tabIndex={0}
+        >
           <div className={`${styles.kpiIconBox} ${styles.kpiIconBlue}`}>
             <Calendar size={20} />
           </div>
@@ -208,7 +264,17 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <div className={styles.kpiCard}>
+        <div
+          className={`${styles.kpiCard} ${
+            statusFilter === "IN_PROGRESS" ? styles.kpiCardActiveOrange : ""
+          }`}
+          onClick={() =>
+            setStatusFilter((prev) => (prev === "IN_PROGRESS" ? "ALL" : "IN_PROGRESS"))
+          }
+          title="Filtrar visitas en progreso hoy"
+          role="button"
+          tabIndex={0}
+        >
           <div className={`${styles.kpiIconBox} ${styles.kpiIconOrange}`}>
             <Clock size={20} />
           </div>
@@ -218,7 +284,17 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <div className={styles.kpiCard}>
+        <div
+          className={`${styles.kpiCard} ${
+            statusFilter === "VISITED" ? styles.kpiCardActiveGreen : ""
+          }`}
+          onClick={() =>
+            setStatusFilter((prev) => (prev === "VISITED" ? "ALL" : "VISITED"))
+          }
+          title="Filtrar visitas realizadas"
+          role="button"
+          tabIndex={0}
+        >
           <div className={`${styles.kpiIconBox} ${styles.kpiIconGreen}`}>
             <CheckCircle2 size={20} />
           </div>
@@ -228,7 +304,17 @@ export default function AgendaPage() {
           </div>
         </div>
 
-        <div className={styles.kpiCard}>
+        <div
+          className={`${styles.kpiCard} ${
+            statusFilter === "PENDING" ? styles.kpiCardActivePurple : ""
+          }`}
+          onClick={() =>
+            setStatusFilter((prev) => (prev === "PENDING" ? "ALL" : "PENDING"))
+          }
+          title="Filtrar pendientes y por visitar"
+          role="button"
+          tabIndex={0}
+        >
           <div className={`${styles.kpiIconBox} ${styles.kpiIconPurple}`}>
             <RotateCcw size={20} />
           </div>
@@ -239,13 +325,71 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* 3. Lista de visitas */}
+      {/* 3. Barra de filtros complementarios (Asesor, Ruta y Filtro activo) */}
+      <div className={styles.filterToolbar}>
+        <div className={styles.filterSelectGroup}>
+          {isDirectorOrAdmin && (
+            <select
+              className={styles.filterSelect}
+              value={advisorFilter}
+              onChange={(e) => setAdvisorFilter(e.target.value)}
+              aria-label="Filtrar por asesor"
+            >
+              <option value="ALL">Todos los asesores</option>
+              {advisorsList.map((adv) => (
+                <option key={adv.id || adv.userId} value={String(adv.userId || adv.id)}>
+                  Asesor: {adv.name || `Asesor #${adv.userId || adv.id}`}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <select
+            className={styles.filterSelect}
+            value={routeFilter}
+            onChange={(e) => setRouteFilter(e.target.value)}
+            aria-label="Filtrar por ruta"
+          >
+            <option value="ALL">Todas las rutas planificadas</option>
+            {routesList.map((r) => (
+              <option key={r.id} value={String(r.id)}>
+                Ruta: {r.name || `RUT-${String(r.id).padStart(3, "0")}`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {statusFilter !== "ALL" && (
+          <div className={styles.activeFilterBadge}>
+            <span>
+              Filtro activo:{" "}
+              {statusFilter === "IN_PROGRESS"
+                ? "En progreso"
+                : statusFilter === "VISITED"
+                ? "Realizadas"
+                : "Pendientes"}
+            </span>
+            <button
+              type="button"
+              className={styles.clearFilterBtn}
+              onClick={() => setStatusFilter("ALL")}
+              title="Quitar filtro y ver todas"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Lista de visitas */}
       <section className={styles.visitsListSection}>
         <div className={styles.sectionTitleRow}>
           <h2 className={styles.sectionTitle}>
             Visitas {period === "day" ? "del día" : "de la semana"}
           </h2>
-          <span className={styles.visitsCountBadge}>{visits.length} programadas</span>
+          <span className={styles.visitsCountBadge}>
+            {displayedVisits.length} de {visits.length} mostradas
+          </span>
         </div>
 
         {loading ? (
@@ -253,19 +397,36 @@ export default function AgendaPage() {
             <Clock size={28} className={styles.emptyIcon} />
             <p className={styles.emptyTitle}>Cargando agenda de visitas...</p>
           </div>
-        ) : visits.length === 0 ? (
+        ) : displayedVisits.length === 0 ? (
           <div className={styles.emptyState}>
             <Calendar size={36} className={styles.emptyIcon} />
-            <p className={styles.emptyTitle}>No hay visitas programadas para este periodo.</p>
-            <p className={styles.emptyText}>
-              Selecciona otra fecha en el calendario o haz clic en "Registrar visita" para ingresar una visita comercial.
+            <p className={styles.emptyTitle}>
+              {statusFilter !== "ALL"
+                ? "No hay visitas con el estado seleccionado en este periodo."
+                : "No hay visitas programadas para este periodo."}
             </p>
+            <p className={styles.emptyText}>
+              {statusFilter !== "ALL"
+                ? "Haz clic en la casilla para quitar el filtro o selecciona otra fecha en el calendario."
+                : "Selecciona otra fecha en el calendario o haz clic en 'Registrar visita' para ingresar una visita comercial."}
+            </p>
+            {statusFilter !== "ALL" && (
+              <button
+                type="button"
+                className={styles.startBtn}
+                style={{ marginTop: "10px" }}
+                onClick={() => setStatusFilter("ALL")}
+              >
+                Ver todas las visitas
+              </button>
+            )}
           </div>
         ) : (
           <div className={styles.visitsCardsGrid}>
-            {visits.map((visit) => {
+            {displayedVisits.map((visit) => {
               const client = clientsMap.get(visit.clientId);
               const route = routesMap.get(visit.routeId);
+              const advisor = advisorsMap.get(visit.advisorId);
               const dateObj = new Date(visit.scheduledAt);
               const timeStr = dateObj.toLocaleTimeString("es-CO", {
                 hour: "2-digit",
@@ -312,6 +473,12 @@ export default function AgendaPage() {
                           <span className={styles.routeBadge}>
                             <GitBranch size={11} />
                             {route.name}
+                          </span>
+                        )}
+                        {advisor && (
+                          <span className={styles.advisorBadge}>
+                            <User size={11} />
+                            {advisor.name}
                           </span>
                         )}
                         <span className={`${styles.statusBadge} ${statusClass}`}>{statusLabel}</span>
@@ -448,7 +615,7 @@ export default function AgendaPage() {
                 onClick={handleConfirmReschedule}
                 disabled={actionLoading}
               >
-                {actionLoading ? "Reprogramando..." : "Confirmar reprogramación"}
+                {actionLoading ? "Guardando..." : "Confirmar"}
               </button>
             </div>
           </div>

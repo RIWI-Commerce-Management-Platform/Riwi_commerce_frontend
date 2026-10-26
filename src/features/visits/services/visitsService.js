@@ -1,16 +1,27 @@
 import { api } from "@/shared/services/apiClient";
 
 /**
- * Consulta la agenda operativa de visitas del asesor comercial autenticado.
+ * Consulta la agenda operativa de visitas (del asesor autenticado o filtrado por asesor/zona).
  * @param {Object} options
  * @param {'day'|'week'} options.period Período de consulta ('day' o 'week')
  * @param {string} [options.date] Fecha en formato YYYY-MM-DD
+ * @param {number|string} [options.advisorId] Identificador de asesor opcional
  */
-export async function getVisitAgenda({ period = "day", date } = {}) {
+export async function getVisitAgenda({ period = "day", date, advisorId } = {}) {
   const params = { period };
   if (date) params.date = date;
+  if (advisorId && advisorId !== "ALL") params.advisorId = advisorId;
   return api.get("/visits/agenda", { params });
 }
+
+/**
+ * Registra o crea una nueva visita comercial directamente.
+ * @param {Object} payload
+ */
+export async function createVisit(payload) {
+  return api.post("/visits", payload);
+}
+
 
 /**
  * Obtiene el detalle completo de una visita por su identificador.

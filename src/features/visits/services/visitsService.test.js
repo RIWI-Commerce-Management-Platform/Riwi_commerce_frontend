@@ -111,4 +111,28 @@ describe("visitsService", () => {
     expect(result.data.length).toBe(1);
     expect(fetchMock.mock.calls[0][0]).toContain("/api/quotes?clientId=2&limit=5");
   });
+
+  it("crea una nueva visita con POST /visits", async () => {
+    const payload = {
+      clientId: 1,
+      advisorId: 2,
+      scheduledAt: "2026-10-26T10:00:00Z",
+      status: "VISITED",
+      observations: "Visita comercial realizada",
+    };
+    const fetchMock = respond(201, { id: 99, ...payload });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await visitsService.createVisit(payload);
+    expect(result.id).toBe(99);
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/visits");
+  });
+
+  it("consulta agenda filtrando por asesor", async () => {
+    const fetchMock = respond(200, []);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await visitsService.getVisitAgenda({ period: "week", date: "2026-10-26", advisorId: 2 });
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/visits/agenda?period=week&date=2026-10-26&advisorId=2");
+  });
 });
