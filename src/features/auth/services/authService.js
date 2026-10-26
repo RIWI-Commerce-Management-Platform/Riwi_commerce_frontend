@@ -1,31 +1,66 @@
-import { API_URL } from "@/config/env";
-
-const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+import { api } from "@/shared/services/apiClient";
 
 /**
- * Inicio de sesión con correo y contraseña.
- * Si VITE_API_URL no está definido, se simula la respuesta (modo demo).
+ * Iniciar sesión con correo y contraseña.
+ * El backend valida las credenciales y establece la cookie de sesión de Better Auth.
  */
-export async function login({ email, password, remember }) {
-  if (!API_URL) {
-    await wait(700);
-    return { mocked: true };
-  }
-
-  const res = await fetch(`${API_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, remember }),
+export async function login({ email, password, rememberMe = true }) {
+  const result = await api.post("/auth/login", {
+    email: email.trim(),
+    password,
+    rememberMe,
   });
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || "Credenciales incorrectas.");
-  }
-  return res.json();
+  return result;
 }
 
-/** TODO: integrar MSAL (Microsoft 365). */
+/**
+ * Obtener la sesión activa y el usuario con su rol sincronizado desde la base de datos.
+ */
+export async function getMe() {
+  return api.get("/auth/me");
+}
+
+/**
+ * Cerrar sesión e invalidar la cookie en el backend.
+ */
+export async function logout() {
+  try {
+    await api.post("/auth/logout");
+  } catch (err) {
+    console.warn("Error al cerrar sesión en el servidor:", err);
+  }
+}
+
+/**
+ * Iniciar flujo OAuth de Microsoft 365 (HU-10).
+ * Devuelve la URL de redirección provista por Better Auth.
+ */
 export async function loginWithMicrosoft() {
-  console.warn("Inicio de sesión con Microsoft: pendiente de integrar (MSAL).");
+  const { url } = await api.post("/auth/microsoft", {
+    callbackURL: `${window.location.origin}/dashboard`,
+  });
+
+  if (url) {
+    window.location.href = url;
+  }
+}
+
+/**
+ * Solicitar enlace de recuperación de contraseña (HU-09).
+ */
+export async function requestPasswordReset(email) {
+  return api.post("/auth/forgot-password", {
+    email: email.trim(),
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+}
+
+/**
+ * Restablecer contraseña con el token recibido por correo (HU-09).
+ */
+export async function resetPassword({ token, newPassword }) {
+  return api.post("/auth/reset-password", {
+    token,
+    newPassword,
+  });
 }

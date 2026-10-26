@@ -1,0 +1,23 @@
+.filters {
+  display: flex; flex-wrap: wrap; gap: 16px 24px;
+  padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+}
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.label { font-size: 13px; font-weight: 600; color: var(--navy); }
+.week { display: flex; gap: 6px; }
+.input {
+  height: 40px; padding: 0 12px; min-width: 0;
+  border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text);
+}
+select.input { min-width: 220px; }
+.button {
+  width: 40px; height: 40px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--navy); font-size: 20px; cursor: pointer;
+}
+.button:hover { border-color: var(--orange); color: var(--orange); }
+
+@media (max-width: 520px) {
+  .filters { flex-direction: column; padding: 14px; }
+  .week .input { flex: 1; }
+  select.input { min-width: 0; width: 100%; }
+}
