@@ -5,9 +5,11 @@ import { getCatalogs } from "@/features/clients/services/clientsService";
 export default function useRoutes() {
   const [routes, setRoutes] = useState([]);
   const [zones, setZones] = useState([]);
+  const [advisors, setAdvisors] = useState([]);
   const [filters, setFilters] = useState({
     search: "",
     zoneId: "",
+    advisorId: "",
     status: "",
     dayOfWeek: "",
     frequency: "",
@@ -22,13 +24,21 @@ export default function useRoutes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Carga zonas desde catálogos para filtros
+  // Carga zonas y asesores reales para filtros
   useEffect(() => {
     getCatalogs()
       .then((data) => {
         if (data?.zones) setZones(data.zones);
       })
       .catch((err) => console.warn("Error cargando zonas para rutas:", err));
+
+    routesService
+      .getAvailableAdvisors()
+      .then((res) => {
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setAdvisors(list);
+      })
+      .catch((err) => console.warn("Error cargando asesores para rutas:", err));
   }, []);
 
   const fetchRoutes = useCallback(async () => {
@@ -38,6 +48,7 @@ export default function useRoutes() {
       const res = await routesService.getRoutes({
         search: filters.search,
         zoneId: filters.zoneId,
+        advisorId: filters.advisorId,
         status: filters.status,
         dayOfWeek: filters.dayOfWeek,
         frequency: filters.frequency,
@@ -79,6 +90,7 @@ export default function useRoutes() {
     setFilters({
       search: "",
       zoneId: "",
+      advisorId: "",
       status: "",
       dayOfWeek: "",
       frequency: "",
@@ -105,6 +117,7 @@ export default function useRoutes() {
   return {
     routes,
     zones,
+    advisors,
     filters,
     pagination,
     loading,

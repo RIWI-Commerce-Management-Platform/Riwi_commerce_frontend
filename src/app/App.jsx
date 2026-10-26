@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, LoginPage, useAuth, ROLES } from "@/features/auth";
 import { DashboardPage } from "@/features/dashboard";
 import { ClientsPage } from "@/features/clients";
-import { RoutesPage } from "@/features/routes";
+import { RoutesPage, AssignedRoutesPage } from "@/features/routes";
 import AppLayout from "@/shared/layout/AppLayout";
 import ProtectedRoute from "@/shared/components/ProtectedRoute/ProtectedRoute";
 import PlaceholderPage from "@/shared/components/PlaceholderPage/PlaceholderPage";
@@ -55,6 +55,14 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR]}>
                   <RoutesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="rutas/asignadas"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR]}>
+                  <AssignedRoutesPage />
                 </ProtectedRoute>
               }
             />
@@ -185,3 +193,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+
