@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { UserPlus, AlertCircle, RefreshCw } from "lucide-react";
 import useClients from "../hooks/useClients";
 import ClientFilters from "../components/ClientFilters/ClientFilters";
@@ -9,6 +10,8 @@ import ClientMapModal from "../components/ClientMapModal/ClientMapModal";
 import styles from "./ClientsPage.module.css";
 
 export default function ClientsPage() {
+  const [searchParams] = useSearchParams();
+
   const {
     clients,
     catalogs,
@@ -32,6 +35,14 @@ export default function ClientsPage() {
 
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [clientForMap, setClientForMap] = useState(null);
+
+  // Abrir modal de nuevo cliente si se solicita por parámetro en la URL
+  useEffect(() => {
+    if (searchParams.get("nuevo") === "true") {
+      setClientToEdit(null);
+      setFormModalOpen(true);
+    }
+  }, [searchParams]);
 
   const handleOpenMapModal = (client) => {
     setClientForMap(client);
@@ -60,7 +71,7 @@ export default function ClientsPage() {
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>Directorio de Clientes</h1>
           <p className={styles.subtitle}>
-            Administración centralizada de cuentas corporativas, geocodificación y contactos (HU-11 a HU-13).
+            Administración centralizada de cuentas comerciales, geocodificación y contactos.
           </p>
         </div>
 
@@ -128,7 +139,7 @@ export default function ClientsPage() {
         onSuccess={refresh}
       />
 
-      {/* Modal de Gestión de Contactos (HU-13) */}
+      {/* Modal de Gestión de Contactos */}
       <ClientContactsModal
         isOpen={contactsModalOpen}
         client={clientForContacts}
