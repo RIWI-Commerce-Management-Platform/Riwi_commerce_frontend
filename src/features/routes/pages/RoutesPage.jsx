@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Check,
   Search,
@@ -16,6 +16,7 @@ import {
   GripVertical,
   ArrowUp,
   ArrowDown,
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   FileSpreadsheet,
@@ -38,6 +39,9 @@ const STATUS_COLORS = {
 
 export default function RoutesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editRouteId = searchParams.get("id");
+  const isEditing = Boolean(editRouteId);
 
   // Datos generales del formulario de la ruta
   const [generalInfo, setGeneralInfo] = useState({
@@ -50,6 +54,11 @@ export default function RoutesPage() {
     description: "",
   });
 
+  // Estado de la ruta (DRAFT o ASSIGNED) y estado de carga inicial en edición
+  const [routeStatus, setRouteStatus] = useState("DRAFT");
+  const [loadingRoute, setLoadingRoute] = useState(isEditing);
+  const initialStopIdsRef = useRef(new Set());
+
   // Catálogos cargados de la base de datos
   const [zones, setZones] = useState([]);
   const [clientTypes, setClientTypes] = useState({});
@@ -60,7 +69,7 @@ export default function RoutesPage() {
   const [allDbClients, setAllDbClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
 
-  // Paradas seleccionadas en la ruta (inicia vacío: el usuario elige los clientes)
+  // Paradas seleccionadas en la ruta
   const [stops, setStops] = useState([]);
 
   // Búsqueda y filtros del panel de clientes
@@ -106,7 +115,8 @@ export default function RoutesPage() {
         if (!isMounted) return;
         const list = Array.isArray(res) ? res : res?.data || [];
         setAdvisors(list);
-        if (list.length > 0) {
+        // Si no estamos en modo edición, preseleccionar el primer asesor disponible
+        if (list.length > 0 && !editRouteId) {
           const firstAdvId = list[0].userId || list[0].id;
           setSelectedAdvisorId(String(firstAdvId));
         }
@@ -139,9 +149,89 @@ export default function RoutesPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [editRouteId]);
 
-  // 2. Calcular métricas en tiempo real con el backend o cálculo local
+  // 2. Cargar datos de la ruta existente cuando estamos en modo edición (?id=X)
+  useEffect(() => {
+    if (!editRouteId) return;
+
+    let isMounted = true;
+    setLoadingRoute(true);
+
+    routesService
+      .getRouteById(editRouteId)
+      .then((routeData) => {
+        if (!isMounted || !routeData) return;
+
+        setGeneralInfo({
+          name: routeData.name || "",
+          zoneId: String(routeData.zoneId || "1"),
+          dayOfWeek: routeData.dayOfWeek || "MONDAY",
+          frequency: routeData.frequency || "WEEKLY",
+          startTime: routeData.startTime ? routeData.startTime.slice(0, 5) : "08:00",
+          endTime: routeData.endTime ? routeData.endTime.slice(0, 5) : "17:00",
+          description: routeData.description || "",
+        });
+
+        if (routeData.advisorId) {
+          setSelectedAdvisorId(String(routeData.advisorId));
+        }
+
+        if (routeData.status) {
+          setRouteStatus(routeData.status);
+        }
+
+        if (Array.isArray(routeData.stops) && routeData.stops.length > 0) {
+          const sortedStops = [...routeData.stops].sort(
+            (a, b) => (a.visitOrder || 0) - (b.visitOrder || 0)
+          );
+
+          const loadedStops = sortedStops.map((s, idx) => ({
+            clientId: s.clientId,
+            visitOrder: s.visitOrder || idx + 1,
+            commercialName: s.client?.commercialName || `Cliente #${s.clientId}`,
+            clientType: "Comercial",
+            address: s.client?.address || "Dirección no especificada",
+            municipality: s.client?.municipality || "Barranquilla",
+            suggestedTime: s.suggestedTime ? s.suggestedTime.slice(0, 5) : "08:00",
+            latitude: s.client?.latitude != null ? Number(s.client.latitude) : null,
+            longitude: s.client?.longitude != null ? Number(s.client.longitude) : null,
+            status: s.status || "PENDING",
+          }));
+
+          setStops(loadedStops);
+          initialStopIdsRef.current = new Set(loadedStops.map((s) => s.clientId));
+        } else {
+          setStops([]);
+          initialStopIdsRef.current = new Set();
+        }
+
+        if (routeData.totalDistanceKm != null && routeData.estimatedDurationMinutes != null) {
+          setMetrics({
+            distanceKm: Number(routeData.totalDistanceKm),
+            durationMinutes: Number(routeData.estimatedDurationMinutes),
+          });
+        }
+      })
+      .catch((err) => {
+        console.error("Error al cargar la ruta para editar:", err);
+        if (isMounted) {
+          setFeedback({
+            type: "error",
+            message: "No se pudo cargar la información de la ruta para editar.",
+          });
+        }
+      })
+      .finally(() => {
+        if (isMounted) setLoadingRoute(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [editRouteId]);
+
+  // 3. Calcular métricas en tiempo real con el backend o cálculo local
   useEffect(() => {
     if (stops.length < 2) {
       setMetrics({
@@ -163,14 +253,14 @@ export default function RoutesPage() {
         }
       })
       .catch(() => {
-        // Fallback geodésico aproximado si el endpoint no responde
+        // Fallback geodésico aproximado si el cálculo rápido no responde
         const approxKm = (stops.length * 4.2).toFixed(1);
         const approxMins = stops.length * 40;
         setMetrics({ distanceKm: Number(approxKm), durationMinutes: approxMins });
       });
   }, [stops]);
 
-  // 3. Clientes disponibles para agregar (excluyendo los que ya están en la ruta)
+  // 4. Clientes disponibles para agregar (excluyendo los que ya están en la ruta)
   const availableClients = useMemo(() => {
     const selectedIds = new Set(stops.map((s) => s.clientId));
     return allDbClients.filter((client) => {
@@ -211,7 +301,7 @@ export default function RoutesPage() {
     return Array.from(set);
   }, [allDbClients]);
 
-  // 4. Agregar cliente a la ruta
+  // 5. Agregar cliente a la ruta
   const handleAddStop = useCallback((client) => {
     setStops((prev) => {
       if (prev.some((s) => s.clientId === client.id)) return prev;
@@ -243,7 +333,7 @@ export default function RoutesPage() {
     });
   }, [clientTypes]);
 
-  // 5. Eliminar cliente de la ruta
+  // 6. Eliminar cliente de la ruta
   const handleRemoveStop = (clientId) => {
     setStops((prev) => {
       const filtered = prev.filter((s) => s.clientId !== clientId);
@@ -284,8 +374,15 @@ export default function RoutesPage() {
     }
   };
 
-  // Acción Cancelar / Descartar
+  // Acción Cancelar / Volver
   const handleCancel = () => {
+    if (isEditing) {
+      if (window.confirm("¿Deseas salir sin guardar los cambios y volver al listado de rutas asignadas?")) {
+        navigate("/rutas/asignadas");
+      }
+      return;
+    }
+
     const hasChanges =
       stops.length > 0 || generalInfo.name !== "RUT-ATL-001" || generalInfo.description.trim() !== "";
 
@@ -305,7 +402,7 @@ export default function RoutesPage() {
         setTimeout(() => setFeedback(null), 3000);
       }
     } else {
-      navigate("/");
+      navigate("/rutas/asignadas");
     }
   };
 
@@ -327,7 +424,7 @@ export default function RoutesPage() {
     }, 500);
   };
 
-  // 6. Inicialización y actualización del Mapa Leaflet
+  // 7. Inicialización y actualización del Mapa Leaflet
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
@@ -457,7 +554,7 @@ export default function RoutesPage() {
     return () => clearTimeout(timer);
   }, [stops, availableClients, handleAddStop]);
 
-  // Guardar Borrador (HU-17 y HU-18)
+  // 8. Guardar Borrador / Actualizar Borrador
   const handleSaveDraft = async () => {
     if (!generalInfo.name.trim()) {
       alert("Por favor ingresa un nombre para la ruta.");
@@ -466,36 +563,90 @@ export default function RoutesPage() {
     setSaving(true);
     setFeedback(null);
     try {
-      const created = await routesService.createRouteDraft({
-        name: generalInfo.name.trim(),
-        description: generalInfo.description.trim() || undefined,
-        zoneId: Number(generalInfo.zoneId) || 1,
-        dayOfWeek: generalInfo.dayOfWeek,
-        frequency: generalInfo.frequency,
-        startTime: `${generalInfo.startTime}:00`,
-        endTime: `${generalInfo.endTime}:00`,
-        startDate: new Date().toISOString().split("T")[0],
-      });
+      if (isEditing) {
+        // Actualizar ruta existente
+        await routesService.updateRouteDraft(editRouteId, {
+          name: generalInfo.name.trim(),
+          description: generalInfo.description.trim() || undefined,
+          zoneId: Number(generalInfo.zoneId) || 1,
+          dayOfWeek: generalInfo.dayOfWeek,
+          frequency: generalInfo.frequency,
+          startTime: `${generalInfo.startTime}:00`,
+          endTime: `${generalInfo.endTime}:00`,
+        });
 
-      // Agregar las paradas seleccionadas
-      for (const stop of stops) {
-        await routesService
-          .addRouteStop(created.id, {
-            clientId: stop.clientId,
-            suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
-            estimatedDurationMinutes: 30,
-          })
-          .catch(() => null);
+        // Sincronizar paradas
+        const currentStopIds = new Set(stops.map((s) => s.clientId));
+
+        // 1. Paradas removidas
+        for (const initId of initialStopIdsRef.current) {
+          if (!currentStopIds.has(initId)) {
+            await routesService.removeRouteStop(editRouteId, initId).catch(() => null);
+          }
+        }
+
+        // 2. Paradas recién agregadas
+        for (const stop of stops) {
+          if (!initialStopIdsRef.current.has(stop.clientId)) {
+            await routesService
+              .addRouteStop(editRouteId, {
+                clientId: stop.clientId,
+                suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
+                estimatedDurationMinutes: 30,
+              })
+              .catch(() => null);
+          }
+        }
+
+        // 3. Reordenar secuencia de paradas
+        if (stops.length > 0) {
+          await routesService
+            .reorderRouteStops(
+              editRouteId,
+              stops.map((s) => s.clientId)
+            )
+            .catch(() => null);
+        }
+
+        initialStopIdsRef.current = new Set(stops.map((s) => s.clientId));
+
+        setFeedback({
+          type: "success",
+          message: `Ruta "${generalInfo.name}" actualizada con éxito (${stops.length} paradas).`,
+        });
+      } else {
+        // Crear nueva ruta en borrador
+        const created = await routesService.createRouteDraft({
+          name: generalInfo.name.trim(),
+          description: generalInfo.description.trim() || undefined,
+          zoneId: Number(generalInfo.zoneId) || 1,
+          dayOfWeek: generalInfo.dayOfWeek,
+          frequency: generalInfo.frequency,
+          startTime: `${generalInfo.startTime}:00`,
+          endTime: `${generalInfo.endTime}:00`,
+          startDate: new Date().toISOString().split("T")[0],
+        });
+
+        // Agregar las paradas seleccionadas
+        for (const stop of stops) {
+          await routesService
+            .addRouteStop(created.id, {
+              clientId: stop.clientId,
+              suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
+              estimatedDurationMinutes: 30,
+            })
+            .catch(() => null);
+        }
+
+        setFeedback({
+          type: "success",
+          message: `Borrador "${created.name}" guardado exitosamente con ${stops.length} paradas.`,
+        });
       }
-
-      setFeedback({
-        type: "success",
-        message: `Borrador "${created.name}" guardado exitosamente con ${stops.length} paradas.`,
-      });
     } catch (err) {
       setFeedback({
         type: "error",
-        message: err.message || "Error al guardar el borrador de la ruta.",
+        message: err.message || "Error al guardar los cambios de la ruta.",
       });
     } finally {
       setSaving(false);
@@ -503,7 +654,7 @@ export default function RoutesPage() {
     }
   };
 
-  // Guardar y Asignar (HU-20)
+  // 9. Guardar y Asignar / Guardar y Reasignar
   const handleSaveAndAssign = async () => {
     if (!generalInfo.name.trim()) {
       alert("Por favor ingresa un nombre para la ruta.");
@@ -521,36 +672,89 @@ export default function RoutesPage() {
     setSaving(true);
     setFeedback(null);
     try {
-      // 1. Crear borrador
-      const created = await routesService.createRouteDraft({
-        name: generalInfo.name.trim(),
-        description: generalInfo.description.trim() || undefined,
-        zoneId: Number(generalInfo.zoneId) || 1,
-        dayOfWeek: generalInfo.dayOfWeek,
-        frequency: generalInfo.frequency,
-        startTime: `${generalInfo.startTime}:00`,
-        endTime: `${generalInfo.endTime}:00`,
-        startDate: new Date().toISOString().split("T")[0],
-      });
+      let targetRouteId = editRouteId;
 
-      // 2. Agregar paradas secuenciales
-      for (const stop of stops) {
-        await routesService
-          .addRouteStop(created.id, {
-            clientId: stop.clientId,
-            suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
-            estimatedDurationMinutes: 30,
-          })
-          .catch(() => null);
+      if (isEditing) {
+        // 1. Actualizar datos de la ruta existente
+        await routesService.updateRouteDraft(editRouteId, {
+          name: generalInfo.name.trim(),
+          description: generalInfo.description.trim() || undefined,
+          zoneId: Number(generalInfo.zoneId) || 1,
+          dayOfWeek: generalInfo.dayOfWeek,
+          frequency: generalInfo.frequency,
+          startTime: `${generalInfo.startTime}:00`,
+          endTime: `${generalInfo.endTime}:00`,
+        });
+
+        // 2. Sincronizar paradas
+        const currentStopIds = new Set(stops.map((s) => s.clientId));
+        for (const initId of initialStopIdsRef.current) {
+          if (!currentStopIds.has(initId)) {
+            await routesService.removeRouteStop(editRouteId, initId).catch(() => null);
+          }
+        }
+        for (const stop of stops) {
+          if (!initialStopIdsRef.current.has(stop.clientId)) {
+            await routesService
+              .addRouteStop(editRouteId, {
+                clientId: stop.clientId,
+                suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
+                estimatedDurationMinutes: 30,
+              })
+              .catch(() => null);
+          }
+        }
+        if (stops.length > 0) {
+          await routesService
+            .reorderRouteStops(
+              editRouteId,
+              stops.map((s) => s.clientId)
+            )
+            .catch(() => null);
+        }
+        initialStopIdsRef.current = new Set(stops.map((s) => s.clientId));
+      } else {
+        // Crear borrador nuevo
+        const created = await routesService.createRouteDraft({
+          name: generalInfo.name.trim(),
+          description: generalInfo.description.trim() || undefined,
+          zoneId: Number(generalInfo.zoneId) || 1,
+          dayOfWeek: generalInfo.dayOfWeek,
+          frequency: generalInfo.frequency,
+          startTime: `${generalInfo.startTime}:00`,
+          endTime: `${generalInfo.endTime}:00`,
+          startDate: new Date().toISOString().split("T")[0],
+        });
+        targetRouteId = created.id;
+
+        // Agregar paradas
+        for (const stop of stops) {
+          await routesService
+            .addRouteStop(created.id, {
+              clientId: stop.clientId,
+              suggestedTime: stop.suggestedTime ? `${stop.suggestedTime.slice(0, 5)}:00` : "08:00:00",
+              estimatedDurationMinutes: 30,
+            })
+            .catch(() => null);
+        }
       }
 
-      // 3. Asignar al asesor (dispara creación de visitas en la agenda)
-      await routesService.assignRouteAdvisor(created.id, Number(selectedAdvisorId));
+      // 3. Asignar al asesor comercial
+      await routesService.assignRouteAdvisor(targetRouteId, Number(selectedAdvisorId));
+      setRouteStatus("ASSIGNED");
 
       setFeedback({
         type: "success",
-        message: "¡Ruta asignada exitosamente! Se han programado las visitas en la agenda del asesor comercial.",
+        message: isEditing
+          ? "¡Ruta actualizada y asignada exitosamente! Redirigiendo a rutas asignadas..."
+          : "¡Ruta asignada exitosamente! Se han programado las visitas en la agenda del asesor comercial.",
       });
+
+      if (isEditing) {
+        setTimeout(() => {
+          navigate("/rutas/asignadas");
+        }, 1800);
+      }
     } catch (err) {
       setFeedback({
         type: "error",
@@ -571,13 +775,36 @@ export default function RoutesPage() {
       {/* 1. Barra Superior Funcional del Workbench y Acciones Principales */}
       <section className={styles.workbenchHeader} aria-label="Control de planeación de ruta">
         <div className={styles.headerLeftInfo}>
+          {isEditing && (
+            <button
+              type="button"
+              className={styles.backToRoutesBtn}
+              onClick={() => navigate("/rutas/asignadas")}
+              title="Volver a la vista de rutas asignadas"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a rutas asignadas</span>
+            </button>
+          )}
+
           <div className={styles.headerTitleRow}>
-            <h1 className={styles.headerMainTitle}>Planeación y Diseño de Ruta</h1>
-            <span className={styles.headerStatusBadge}>Borrador en diseño</span>
+            <h1 className={styles.headerMainTitle}>
+              {isEditing ? `Editar Ruta: ${generalInfo.name}` : "Planeación y Diseño de Ruta"}
+            </h1>
+            <span className={styles.headerStatusBadge}>
+              {isEditing
+                ? routeStatus === "ASSIGNED"
+                  ? "Ruta Asignada (Edición)"
+                  : "Borrador (Edición)"
+                : "Borrador en diseño"}
+            </span>
           </div>
+
           <div className={styles.headerSubtitleRow}>
             <span className={styles.headerContextMeta}>
-              Configura los datos del recorrido, selecciona los clientes en el mapa y asigna el asesor comercial.
+              {isEditing
+                ? `Modificando itinerario #${editRouteId}. Actualiza los datos generales, reorganiza las paradas y reasigna el asesor.`
+                : "Configura los datos del recorrido, selecciona los clientes en el mapa y asigna el asesor comercial."}
             </span>
             {stops.length > 0 && (
               <span className={styles.activeStopsIndicator}>
@@ -593,32 +820,50 @@ export default function RoutesPage() {
             type="button"
             className={styles.cancelBtn}
             onClick={handleCancel}
-            title="Descartar cambios y reiniciar formulario"
+            title={isEditing ? "Volver a rutas asignadas" : "Descartar cambios y reiniciar formulario"}
           >
             <RotateCcw size={14} />
-            <span>Cancelar</span>
+            <span>{isEditing ? "Volver" : "Cancelar"}</span>
           </button>
 
           <button
             type="button"
             className={styles.draftBtn}
             onClick={handleSaveDraft}
-            disabled={saving}
+            disabled={saving || loadingRoute}
           >
-            {saving ? "Guardando..." : "Guardar borrador"}
+            {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar borrador"}
           </button>
 
           <button
             type="button"
             className={styles.assignPrimaryBtn}
             onClick={handleSaveAndAssign}
-            disabled={saving}
+            disabled={saving || loadingRoute}
           >
             <Check size={16} />
-            <span>{saving ? "Procesando..." : "Guardar y asignar"}</span>
+            <span>
+              {saving
+                ? "Procesando..."
+                : isEditing
+                ? "Guardar y reasignar"
+                : "Guardar y asignar"}
+            </span>
           </button>
         </div>
       </section>
+
+      {/* Alerta de Carga en modo edición */}
+      {loadingRoute && (
+        <div
+          className={styles.feedbackBanner}
+          style={{ backgroundColor: "#eff6ff", borderColor: "#bfdbfe", color: "#1e40af" }}
+          role="status"
+        >
+          <Info size={16} />
+          <span>Cargando información completa de la ruta #{editRouteId}...</span>
+        </div>
+      )}
 
       {/* Alerta de Notificación / Feedback */}
       {feedback && (
@@ -710,7 +955,7 @@ export default function RoutesPage() {
                 </select>
               </div>
 
-              {/* Horarios con selector nativo limpio, sin íconos duplicados ni desbordamiento */}
+              {/* Horarios con selector nativo limpio */}
               <div className={styles.timeRow}>
                 <div className={styles.formGroup}>
                   <label htmlFor="startTime">Inicio sugerido *</label>
@@ -1045,6 +1290,11 @@ export default function RoutesPage() {
                 ) : (
                   stops.map((stop, index) => {
                     const pinColor = STATUS_COLORS[stop.status] || "#ea580c";
+                    const resolvedClientType =
+                      clientTypes[allDbClients.find((c) => c.id === stop.clientId)?.clientTypeId] ||
+                      stop.clientType ||
+                      "Comercial";
+
                     return (
                       <tr key={stop.clientId}>
                         <td className={styles.tdDrag}>
@@ -1061,7 +1311,7 @@ export default function RoutesPage() {
                         </td>
 
                         <td className={styles.tdClientName}>{stop.commercialName}</td>
-                        <td className={styles.tdClientType}>{stop.clientType}</td>
+                        <td className={styles.tdClientType}>{resolvedClientType}</td>
                         <td className={styles.tdAddress}>{stop.address}</td>
                         <td className={styles.tdMunicipality}>{stop.municipality}</td>
                         <td className={styles.tdTime}>{stop.suggestedTime}</td>

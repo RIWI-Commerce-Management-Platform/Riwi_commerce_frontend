@@ -31,7 +31,7 @@ const FREQUENCY_LABELS = {
   MONTHLY: "Mensual",
 };
 
-export default function RouteDetailModal({ isOpen, route, onClose }) {
+export default function RouteDetailModal({ isOpen, route, onClose, onEdit }) {
   const [detailedRoute, setDetailedRoute] = useState(null);
   const [loading, setLoading] = useState(false);
   const mapContainerRef = useRef(null);
@@ -247,7 +247,18 @@ export default function RouteDetailModal({ isOpen, route, onClose }) {
         </div>
 
         <footer className={styles.footer}>
-          <div />
+          {onEdit ? (
+            <button
+              type="button"
+              className={styles.editActionBtn}
+              onClick={() => onEdit(detailedRoute || route)}
+            >
+              <Edit3 size={15} />
+              <span>Editar esta ruta</span>
+            </button>
+          ) : (
+            <div />
+          )}
           <button type="button" className={styles.closeActionBtn} onClick={onClose}>
             Cerrar
           </button>

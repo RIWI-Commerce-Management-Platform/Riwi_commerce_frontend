@@ -18,20 +18,22 @@ const FREQUENCIES = [
 ];
 
 const STATUSES = [
-  { value: "DRAFT", label: "Borrador" },
   { value: "ASSIGNED", label: "Asignada" },
+  { value: "DRAFT", label: "Borrador" },
   { value: "INACTIVE", label: "Inactiva" },
 ];
 
 export default function RouteFilters({
   filters,
   zones = [],
+  advisors = [],
   onFilterChange,
   onReset,
 }) {
   const hasActiveFilters =
     Boolean(filters.search) ||
     Boolean(filters.zoneId) ||
+    Boolean(filters.advisorId) ||
     Boolean(filters.status) ||
     Boolean(filters.dayOfWeek) ||
     Boolean(filters.frequency) ||
@@ -63,6 +65,21 @@ export default function RouteFilters({
           {zones.map((zone) => (
             <option key={zone.id} value={String(zone.id)}>
               {zone.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Asesor */}
+        <select
+          className={styles.select}
+          value={filters.advisorId || ""}
+          onChange={(e) => onFilterChange("advisorId", e.target.value)}
+          aria-label="Filtrar por asesor comercial"
+        >
+          <option value="">Todos los Asesores</option>
+          {advisors.map((adv) => (
+            <option key={adv.userId || adv.id} value={String(adv.userId || adv.id)}>
+              {adv.name}
             </option>
           ))}
         </select>

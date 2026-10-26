@@ -10,7 +10,6 @@ import {
   XCircle,
   ChevronLeft,
   ChevronRight,
-  TrendingUp,
 } from "lucide-react";
 import styles from "./RoutesTable.module.css";
 
@@ -43,6 +42,7 @@ function getStatusBadge(status) {
 export default function RoutesTable({
   routes = [],
   zones = [],
+  advisors = [],
   loading = false,
   pagination,
   onPageChange,
@@ -53,6 +53,12 @@ export default function RoutesTable({
   const getZoneName = (zoneId) => {
     const z = zones.find((item) => item.id === zoneId);
     return z?.name || `Zona #${zoneId}`;
+  };
+
+  const getAdvisorName = (advisorId) => {
+    if (!advisorId) return "Sin asignar";
+    const adv = advisors.find((a) => (a.userId || a.id) === advisorId);
+    return adv?.name || `Asesor #${advisorId}`;
   };
 
   if (loading && routes.length === 0) {
@@ -72,7 +78,7 @@ export default function RoutesTable({
         </div>
         <p className={styles.emptyTitle}>No se encontraron rutas comerciales</p>
         <p className={styles.emptySubtitle}>
-          Crea tu primera ruta usando el botón superior "Nueva Ruta (Wizard)" o ajusta los filtros de búsqueda.
+          Crea tu primera ruta usando el botón "Nueva Ruta" o ajusta los filtros de búsqueda.
         </p>
       </div>
     );
@@ -96,8 +102,10 @@ export default function RoutesTable({
           <tbody>
             {routes.map((route) => {
               const stopsCount = route.stopsCount ?? route.stops?.length ?? 0;
-              const distanceKm = route.totalDistanceKm != null ? `${Number(route.totalDistanceKm).toFixed(1)} km` : "0.0 km";
-              const durationMin = route.estimatedDurationMinutes != null ? `${route.estimatedDurationMinutes} min` : "0 min";
+              const distanceKm =
+                route.totalDistanceKm != null ? `${Number(route.totalDistanceKm).toFixed(1)} km` : "0.0 km";
+              const durationMin =
+                route.estimatedDurationMinutes != null ? `${route.estimatedDurationMinutes} min` : "0 min";
 
               return (
                 <tr key={route.id} className={!route.isActive ? styles.rowInactive : ""}>
@@ -150,7 +158,7 @@ export default function RoutesTable({
                         <strong>{stopsCount}</strong> {stopsCount === 1 ? "parada" : "paradas"}
                       </span>
                       <div className={styles.metricsDetails}>
-                        <span title="Distancia calculada (Haversine)">{distanceKm}</span>
+                        <span title="Distancia acumulada">{distanceKm}</span>
                         <span>&bull;</span>
                         <span title="Tiempo estimado con atención">{durationMin}</span>
                       </div>
@@ -162,7 +170,7 @@ export default function RoutesTable({
                     <div className={styles.advisorCell}>
                       <User size={13} className={styles.cellIcon} />
                       {route.advisorId ? (
-                        <span className={styles.advisorName}>Asesor #{route.advisorId}</span>
+                        <span className={styles.advisorName}>{getAdvisorName(route.advisorId)}</span>
                       ) : (
                         <span className={styles.noAdvisor}>Sin asignar</span>
                       )}
@@ -179,7 +187,7 @@ export default function RoutesTable({
                         type="button"
                         className={styles.actionBtnDetail}
                         onClick={() => onViewRoute(route)}
-                        title="Ver mapa y detalle de paradas (HU-19)"
+                        title="Ver mapa y detalle de paradas"
                         aria-label="Ver detalle de ruta"
                       >
                         <Compass size={15} />
@@ -190,7 +198,7 @@ export default function RoutesTable({
                         type="button"
                         className={styles.actionBtnEdit}
                         onClick={() => onEditRoute(route)}
-                        title="Editar en Wizard de 3 pasos (HU-17, HU-18)"
+                        title="Editar recorrido"
                         aria-label="Editar ruta"
                       >
                         <Edit3 size={15} />
@@ -198,7 +206,9 @@ export default function RoutesTable({
 
                       <button
                         type="button"
-                        className={`${styles.statusToggleBtn} ${route.isActive ? styles.toggleActive : styles.toggleInactive}`}
+                        className={`${styles.statusToggleBtn} ${
+                          route.isActive ? styles.toggleActive : styles.toggleInactive
+                        }`}
                         onClick={() => onToggleStatus(route)}
                         title={route.isActive ? "Desactivar ruta" : "Activar ruta"}
                         aria-label="Alternar estado"

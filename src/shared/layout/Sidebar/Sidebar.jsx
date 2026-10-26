@@ -115,9 +115,9 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                   </li>
                   <li>
                     <NavLink
-                      to="/rutas?vista=asignadas"
+                      to="/rutas/asignadas"
                       onClick={onClose}
-                      className={styles.submenuItem}
+                      className={({ isActive }) => `${styles.submenuItem} ${isActive ? styles.submenuItemActive : ""}`}
                     >
                       <span className={styles.subBullet} />
                       <span>Rutas asignadas</span>
@@ -285,3 +285,5 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
     </>
   );
 }
+
+
