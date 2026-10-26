@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -17,15 +17,34 @@ import {
   X,
 } from "lucide-react";
 import { useAuth, ROLES } from "@/features/auth";
+import * as visitsService from "@/features/visits/services/visitsService";
 import styles from "./Sidebar.module.css";
 
 export default function Sidebar({ isOpen = false, onClose = () => {} }) {
-  const { hasRole, role } = useAuth();
+  const { role } = useAuth();
   const location = useLocation();
 
-  // Planeación de rutas submenú desplegable
+  // Submenú desplegable de Planeación de rutas
   const isRoutesActive = location.pathname.startsWith("/rutas");
   const [routesSubmenuOpen, setRoutesSubmenuOpen] = useState(true);
+
+  // Widget inferior: Objetivo semanal (HU-39)
+  const [weeklyGoal, setWeeklyGoal] = useState({
+    goal: 24,
+    completed: 19,
+    progressPercentage: 78,
+  });
+
+  useEffect(() => {
+    visitsService
+      .getWeeklyGoal()
+      .then((data) => {
+        if (data && data.goal != null) {
+          setWeeklyGoal(data);
+        }
+      })
+      .catch(() => null);
+  }, []);
 
   const isDirectorOrAdmin = role === ROLES.ADMIN || role === ROLES.DIRECTOR_REGIONAL;
 
@@ -117,7 +136,9 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                     <NavLink
                       to="/rutas/asignadas"
                       onClick={onClose}
-                      className={({ isActive }) => `${styles.submenuItem} ${isActive ? styles.submenuItemActive : ""}`}
+                      className={({ isActive }) =>
+                        `${styles.submenuItem} ${isActive ? styles.submenuItemActive : ""}`
+                      }
                     >
                       <span className={styles.subBullet} />
                       <span>Rutas asignadas</span>
@@ -125,9 +146,11 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                   </li>
                   <li>
                     <NavLink
-                      to="/visitas"
+                      to="/agenda"
                       onClick={onClose}
-                      className={styles.submenuItem}
+                      className={({ isActive }) =>
+                        `${styles.submenuItem} ${isActive ? styles.submenuItemActive : ""}`
+                      }
                     >
                       <span className={styles.subBullet} />
                       <span>Agenda de asesores</span>
@@ -135,6 +158,20 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                   </li>
                 </ul>
               )}
+            </li>
+
+            {/* Agenda directa */}
+            <li>
+              <NavLink
+                to="/agenda"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                }
+              >
+                <Calendar className={styles.icon} size={19} />
+                <span className={styles.navLabel}>Agenda</span>
+              </NavLink>
             </li>
 
             {/* Mapa de visitas */}
@@ -171,7 +208,11 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
                 to="/visitas"
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ""}`
+                  `${styles.navItem} ${
+                    isActive || location.pathname.startsWith("/visitas")
+                      ? styles.navItemActive
+                      : ""
+                  }`
                 }
               >
                 <ClipboardList className={styles.icon} size={19} />
@@ -257,33 +298,36 @@ export default function Sidebar({ isOpen = false, onClose = () => {} }) {
           </ul>
         </nav>
 
-        {/* Widget inferior: Resumen Regional (Idéntico a la imagen del Workbench) */}
-        <div className={styles.regionalWidget}>
-          <div className={styles.regionalHeader}>
-            <div className={styles.targetIconCircle}>
+        {/* Widget inferior: Objetivo Semanal (Idéntico a la maqueta de Visitas) */}
+        <div className={styles.goalWidget}>
+          <div className={styles.goalHeader}>
+            <div className={styles.goalIconCircle}>
               <Target size={16} />
             </div>
-            <span className={styles.regionalTitle}>Resumen regional</span>
+            <span className={styles.goalTitle}>Objetivo semanal</span>
           </div>
 
-          <div className={styles.statsGrid}>
-            <div className={styles.statBox}>
-              <strong className={styles.statNumber}>24</strong>
-              <span className={styles.statLabel}>Rutas activas</span>
+          <div className={styles.goalProgressBlock}>
+            <div className={styles.goalPercentageRow}>
+              <strong className={styles.goalPercentage}>
+                {weeklyGoal.progressPercentage}%
+              </strong>
+              <span className={styles.goalSubtitle}>de cumplimiento</span>
             </div>
-            <div className={styles.statBox}>
-              <strong className={styles.statNumber}>12</strong>
-              <span className={styles.statLabel}>Asesores activos</span>
+            <div className={styles.progressBarTrack}>
+              <div
+                className={styles.progressBarFill}
+                style={{
+                  width: `${Math.min(100, Math.max(0, weeklyGoal.progressPercentage))}%`,
+                }}
+              />
             </div>
-            <div className={styles.statBox}>
-              <strong className={styles.statNumber}>1.285</strong>
-              <span className={styles.statLabel}>Clientes en la región</span>
-            </div>
+            <span className={styles.goalMetaText}>
+              Meta: {weeklyGoal.goal} visitas | Completadas: {weeklyGoal.completed}
+            </span>
           </div>
         </div>
       </aside>
     </>
   );
 }
-
-

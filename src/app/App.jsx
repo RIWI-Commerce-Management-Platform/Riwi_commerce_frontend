@@ -3,6 +3,7 @@ import { AuthProvider, LoginPage, useAuth, ROLES } from "@/features/auth";
 import { DashboardPage } from "@/features/dashboard";
 import { ClientsPage } from "@/features/clients";
 import { RoutesPage, AssignedRoutesPage } from "@/features/routes";
+import { RegisterVisitPage, AgendaPage } from "@/features/visits";
 import AppLayout from "@/shared/layout/AppLayout";
 import ProtectedRoute from "@/shared/components/ProtectedRoute/ProtectedRoute";
 import PlaceholderPage from "@/shared/components/PlaceholderPage/PlaceholderPage";
@@ -67,23 +68,31 @@ export default function App() {
               }
             />
 
-            {/* Agenda y Registro de Visitas */}
+            {/* Agenda de Asesores Comerciales */}
+            <Route
+              path="agenda"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR]}>
+                  <AgendaPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Registro y Gestión de Visitas */}
             <Route
               path="visitas"
               element={
-                <PlaceholderPage
-                  title="Agenda y Registro de Visitas"
-                  description="Agenda operativa diaria y semanal para asesores comerciales, inicio de visita en terreno, registro de resultado tipificado, reprogramación y compromisos."
-                  moduleCode="Épica E4 (HU-23 a HU-28)"
-                  targetEndpoints={[
-                    "GET /visits/agenda (Agenda diaria del asesor)",
-                    "POST /visits/:id/start (Iniciar atención presencial)",
-                    "POST /visits/:id/result (Registrar resultado comercial)",
-                    "PATCH /visits/:id/reschedule (Reprogramar fecha/hora)",
-                    "POST /visits/:id/not-visited (Marcar no visitado con motivo)",
-                    "POST /visits/:id/attachments (Cargar soportes/fotos en S3)",
-                  ]}
-                />
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR]}>
+                  <RegisterVisitPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="visitas/registrar"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR_REGIONAL, ROLES.ASESOR]}>
+                  <RegisterVisitPage />
+                </ProtectedRoute>
               }
             />
 
