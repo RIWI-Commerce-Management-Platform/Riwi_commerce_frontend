@@ -255,6 +255,26 @@
   justify-content: space-between;
 }
 
+
+.editActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ea580c;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.editActionBtn:hover {
+  background: #c2410c;
+}
+
 .closeActionBtn {
   background: #ffffff;
   border: 1px solid #cbd5e1;

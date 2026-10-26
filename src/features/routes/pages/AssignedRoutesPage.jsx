@@ -170,6 +170,10 @@ export default function AssignedRoutesPage() {
         isOpen={detailModalOpen}
         route={selectedRoute}
         onClose={() => setDetailModalOpen(false)}
+        onEdit={(routeToEdit) => {
+          setDetailModalOpen(false);
+          handleEditRoute(routeToEdit);
+        }}
       />
     </div>
   );
