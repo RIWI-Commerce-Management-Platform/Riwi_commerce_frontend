@@ -822,13 +822,11 @@ export default function RoutesPage() {
             <button
               type="button"
               className={styles.addClientBtn}
-              onClick={() => {
-                const searchEl = document.getElementById("clientSearchInput");
-                if (searchEl) searchEl.focus();
-              }}
+              onClick={() => navigate("/clientes?nuevo=true")}
+              title="Ir al directorio de clientes para registrar un nuevo cliente con ubicación"
             >
               <Plus size={15} />
-              <span>Agregar cliente</span>
+              <span>Registrar nuevo cliente</span>
             </button>
             <button
               type="button"
@@ -897,9 +895,17 @@ export default function RoutesPage() {
                 <div className={styles.emptyClientsNotice}>
                   <p>
                     {allDbClients.length === 0
-                      ? "Aún no hay clientes registrados en el sistema. Puedes registrarlos en el módulo de Clientes."
+                      ? "Aún no hay clientes registrados en el sistema."
                       : "No hay más clientes disponibles para los filtros seleccionados o ya están en la ruta."}
                   </p>
+                  <button
+                    type="button"
+                    className={styles.seeMoreBtn}
+                    style={{ marginTop: "8px" }}
+                    onClick={() => navigate("/clientes?nuevo=true")}
+                  >
+                    + Registrar nuevo cliente
+                  </button>
                 </div>
               ) : (
                 availableClients.map((client) => {
